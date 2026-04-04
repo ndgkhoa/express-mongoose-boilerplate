@@ -1,7 +1,7 @@
 # Code Standards & Conventions
 
 **Project**: servercn-mongoose-starter v1.0.0  
-**Last Updated**: 2026-04-03  
+**Last Updated**: 2026-04-04  
 **Applies To**: All TypeScript code in `src/` directory
 
 ## Core Principles
@@ -23,6 +23,8 @@ src/
 ├── db/
 │   └── db.ts                # Mongoose connection & initialization
 ├── modules/                  # Feature-based modules
+│   ├── auth/
+│   │   └── auth.controller.ts     # Auth placeholder [NEW]
 │   ├── health/
 │   │   ├── health.routes.ts       # Route definitions
 │   │   └── health.controller.ts   # Request handlers
@@ -39,7 +41,8 @@ src/
     │   └── api-error.ts      # ApiError class
     ├── middlewares/
     │   ├── error-handler.ts  # Global error handler
-    │   └── not-found-handler.ts
+    │   ├── not-found-handler.ts
+    │   └── security-header.ts # Security headers (Helmet + CORS) [NEW]
     ├── constants/
     │   └── status-codes.ts   # HTTP status codes
     └── utils/
@@ -239,6 +242,11 @@ ApiError.unauthorized(message)              // 401
 ApiError.forbidden(message)                 // 403
 ApiError.notFound(message)                  // 404
 ApiError.conflict(message)                  // 409
+ApiError.validation(message, errors?)       // 400
+ApiError.notImplemented(message)            // 501
+ApiError.badGateway(message)                // 502
+ApiError.serviceUnavailable(message)        // 503
+ApiError.tooManyRequests(message)           // 429
 ApiError.server(message)                    // 500
 ```
 
@@ -353,12 +361,20 @@ logger.fatal(error, "Database connection failed");
 
 ## Middleware Pattern
 
-Express middleware follows standard signature:
+Express middleware follows standard signature. Security middlewares MUST be applied first:
 
 ```typescript
-// ✅ Good
-import { Request, Response, NextFunction } from "express";
+// ✅ Good — Applied in app.ts FIRST
+export const configureSecurityHeaders = (app: Express) => {
+  app.use(helmet());
+  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+  app.use((_req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    next();
+  });
+};
 
+// ✅ Custom middleware
 export function customMiddleware(
   req: Request,
   res: Response,

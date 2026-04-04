@@ -72,7 +72,7 @@ Routes are organized by feature modules (health, user, etc.) with no version pre
 
 ## Environment Configuration
 
-### Required Environment Variables
+### Currently Validated Variables
 
 | Variable       | Type   | Default               | Description                                                                  |
 | -------------- | ------ | --------------------- | ---------------------------------------------------------------------------- |
@@ -82,9 +82,21 @@ Routes are organized by feature modules (health, user, etc.) with no version pre
 | `CORS_ORIGIN`  | URL    | http://localhost:3000 | Allowed CORS origin for frontend requests                                    |
 | `LOG_LEVEL`    | enum   | info                  | Pino log level: `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` |
 
+### Future Variables (Phase 2+, currently commented in .env.example)
+
+| Variable                       | Type   | Purpose                            | Status  |
+| ------------------------------ | ------ | ---------------------------------- | ------- |
+| `JWT_ACCESS_SECRET`            | string | JWT access token signing (v1.1.0)  | Planned |
+| `JWT_REFRESH_SECRET`           | string | JWT refresh token signing (v1.1.0) | Planned |
+| `CRYPTO_SECRET`                | string | Encryption/decryption key          | Planned |
+| `SMTP_HOST`, `SMTP_PORT`, etc. | string | Email notifications (v1.1.0)       | Planned |
+| `CLOUDINARY_*`                 | string | File uploads (v1.2.0)              | Planned |
+| `GOOGLE_CLIENT_ID`, etc.       | string | OAuth integration (v1.1.0)         | Planned |
+| `GITHUB_CLIENT_ID`, etc.       | string | OAuth integration (v1.1.0)         | Planned |
+
 **Setup**: Create `.env.development.local` and `.env.production.local` files. The project uses `dotenv-flow` to load environment variables with proper precedence.
 
-**Validation**: All env vars are validated at startup using Zod schema in `src/shared/configs/env.ts`. Invalid config exits the process immediately.
+**Validation**: All env vars are validated at startup using Zod schema in `src/shared/configs/env.ts`. Invalid config exits the process immediately with error details.
 
 ## Package Scripts
 
@@ -208,38 +220,56 @@ All pull requests must pass:
 
 ### Phase 1: Foundation (Current - v1.0.0)
 
-**Status**: Complete
+**Status**: Complete (Released 2026-04-03)
 
-- Express app with middleware stack
-- MongoDB + Mongoose connection
-- Health check endpoints
-- Error handling & response normalization
-- Environment validation with Zod
-- Graceful shutdown
-- Swagger documentation setup
+**Implementation**:
+
+- Express 5.x app with middleware stack
+- Security headers middleware (Helmet + CORS + custom headers) applied FIRST
+- MongoDB + Mongoose 9.x connection with graceful shutdown
+- Health check endpoints (basic + detailed with system info)
+- ApiError class with 11 factory methods
+- ApiResponse normalization
+- AsyncHandler for async route wrapping
+- Environment validation with Zod (fail-fast)
+- Pino structured logging (dev/prod modes)
+- Swagger/OpenAPI documentation
 - ESLint, Prettier, Husky, commitlint
-- TypeScript strict mode
+- TypeScript strict mode enabled
+
+**Modules Implemented**:
+
+- Health module (complete)
+- User model (schema with OAuth support)
+- Auth module (placeholder for v1.1.0)
 
 ### Phase 2: Core Features (Planned - v1.1.0)
 
-**Status**: Pending
+**Status**: In Progress (Auth module placeholder exists)
 
 **Functional Requirements**:
 
-- [ ] User authentication (JWT)
-- [ ] User registration & login
+- [ ] User authentication (JWT + OAuth: Google, GitHub)
+- [ ] User registration & login endpoints
 - [ ] User profile CRUD
-- [ ] Password hashing & verification
+- [ ] Password hashing (bcrypt) & verification
 - [ ] Refresh token mechanism
-- [ ] User roles & permissions
+- [ ] User roles & permissions (RBAC)
+- [ ] Email verification & password reset
 
 **Non-Functional Requirements**:
 
 - Comprehensive unit & integration tests (>80% coverage)
-- API documentation (Swagger)
+- API documentation (Swagger auto-generated)
 - Input validation (Zod schemas)
 - Rate limiting per endpoint
 - Request logging & audit trail
+
+**Module Status**:
+
+- Auth module created (placeholder controllers)
+- User model defined (with OAuth support)
+- Ready for implementation
 
 ### Phase 3: Advanced Features (Planned - v1.2.0)
 

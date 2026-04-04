@@ -2,7 +2,7 @@
 
 **Project**: servercn-mongoose-starter  
 **Current Version**: 1.0.0  
-**Last Updated**: 2026-04-03  
+**Last Updated**: 2026-04-04  
 **Repository**: https://github.com/yourusername/servercn-mongoose-starter
 
 ## Vision
@@ -50,7 +50,8 @@ Create a production-ready Express.js + MongoDB starter template that:
 **Security & Middleware**:
 
 - [x] Helmet for HTTP security headers
-- [x] CORS with configurable origin
+- [x] CORS with configurable origin (applied FIRST)
+- [x] Custom security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
 - [x] Cookie parser for secure cookie handling
 - [x] Morgan for HTTP request logging
 
@@ -77,11 +78,12 @@ Create a production-ready Express.js + MongoDB starter template that:
 
 ---
 
-### Phase 2: Authentication & User Management (v1.1.0) - PLANNED 📋
+### Phase 2: Authentication & User Management (v1.1.0) - IN PROGRESS 🔄
 
 **Target Release**: Q2 2026  
 **Estimated Duration**: 4-6 weeks  
 **Priority**: High
+**Status**: Auth module foundation in place; ready for implementation
 
 #### Features
 

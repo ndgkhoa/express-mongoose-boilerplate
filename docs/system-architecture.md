@@ -1,7 +1,7 @@
 # System Architecture
 
 **Project**: servercn-mongoose-starter v1.0.0  
-**Last Updated**: 2026-04-03  
+**Last Updated**: 2026-04-04  
 **Architecture Style**: Feature-based modular with layered middleware
 
 ## High-Level Architecture
@@ -14,11 +14,11 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                  Express Middleware Stack                    │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │ 1. Body Parser (JSON, URL-encoded)                     │ │
-│  │ 2. CORS & Origin Validation                            │ │
-│  │ 3. Helmet (Security Headers)                           │ │
-│  │ 4. Cookie Parser                                       │ │
-│  │ 5. Morgan (HTTP Logging)                               │ │
+│  │ 1. Security Headers (Helmet + CORS + Custom Headers)  │ │
+│  │ 2. Body Parser (JSON, URL-encoded)                     │ │
+│  │ 3. Cookie Parser                                       │ │
+│  │ 4. Morgan (HTTP Logging)                               │ │
+│  │ 5. Swagger UI Setup                                    │ │
 │  └────────────────────────────────────────────────────────┘ │
 └────────────────────────┬────────────────────────────────────┘
                          ↓
@@ -71,20 +71,19 @@
 
 The order is **critical** for correct behavior. Express processes middleware sequentially:
 
-| Order | Middleware             | Purpose               | Code Location |
-| ----- | ---------------------- | --------------------- | ------------- |
-| 1     | `express.json()`       | Parse JSON bodies     | app.ts        |
-| 2     | `express.urlencoded()` | Parse form data       | app.ts        |
-| 3     | `cors()`               | Cross-origin requests | app.ts        |
-| 4     | `helmet()`             | Security headers      | app.ts        |
-| 5     | `cookieParser()`       | Cookie handling       | app.ts        |
-| 6     | `morgan()`             | HTTP request logging  | app.ts        |
-| 7     | `setupSwagger()`       | Swagger UI setup      | app.ts        |
-| 8     | Routes                 | Feature routes        | app.ts        |
-| 9     | `notFoundHandler`      | 404 responses         | app.ts        |
-| 10    | `errorHandler`         | Global error handling | app.ts        |
+| Order | Middleware                   | Purpose                        | Code Location      |
+| ----- | ---------------------------- | ------------------------------ | ------------------ |
+| 1     | `configureSecurityHeaders()` | Helmet + CORS + custom headers | security-header.ts |
+| 2     | `express.json()`             | Parse JSON bodies              | app.ts             |
+| 3     | `express.urlencoded()`       | Parse form data                | app.ts             |
+| 4     | `cookieParser()`             | Cookie handling                | app.ts             |
+| 5     | `morgan()`                   | HTTP request logging           | app.ts             |
+| 6     | `setupSwagger()`             | Swagger UI setup               | app.ts             |
+| 7     | Routes                       | Feature routes                 | app.ts             |
+| 8     | `notFoundHandler`            | 404 responses                  | app.ts             |
+| 9     | `errorHandler`               | Global error handling          | app.ts             |
 
-**Important**: Error handler MUST be last middleware.
+**Critical**: Security middleware MUST be first. Error handler MUST be last.
 
 ## Request Lifecycle
 
@@ -414,6 +413,8 @@ export const env = Object.freeze(result.data);
 ```
 HTTP Request
     ↓
+configureSecurityHeaders() [FIRST MIDDLEWARE]
+    ↓
 Helmet Middleware
 ├── Content-Security-Policy
 ├── X-Frame-Options (clickjacking protection)
@@ -422,10 +423,15 @@ Helmet Middleware
 └── Other 14+ security headers
     ↓
 CORS Middleware
-├── Origin validation
-├── Allowed methods (GET, POST, PUT, DELETE, PATCH)
+├── Origin validation (env.CORS_ORIGIN)
+├── Allowed methods (GET, POST, PUT, DELETE, PATCH, OPTIONS)
 ├── Allowed headers (Content-Type, Authorization, X-Requested-With)
 └── Credentials support (httpOnly cookies)
+    ↓
+Custom Security Headers
+├── X-Content-Type-Options: nosniff
+├── X-Frame-Options: DENY
+└── X-XSS-Protection: 1; mode=block
     ↓
 Cookie Parser
 ├── Signed cookie support
@@ -446,11 +452,12 @@ Controller Logic
 ### CORS Configuration
 
 ```typescript
+// Configured in configureSecurityHeaders() at security-header.ts
 cors({
-  origin: env.CORS_ORIGIN, // Single origin (e.g., https://app.example.com)
+  origin: env.CORS_ORIGIN || "*", // Single origin or wildcard
+  credentials: true, // Allow cookies
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true // Allow cookies
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 });
 ```
 
