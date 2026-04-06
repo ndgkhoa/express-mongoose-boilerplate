@@ -21,25 +21,25 @@ export const envSchema = z.object({
 
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
-    .default("info")
+    .default("info"),
 
-  // JWT_ACCESS_SECRET: z.string().min(32),
-  // JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_ACCESS_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32),
 
   // CRYPTO_SECRET: z.string().min(32),
 
-  // SMTP_HOST: z.string(),
-  // SMTP_PORT: z
-  //   .string()
-  //   .regex(/^\d+$/, "SMTP_PORT must be a number")
-  //   .transform(Number),
-  // SMTP_USER: z.string(),
-  // SMTP_PASS: z.string(),
-  // EMAIL_FROM: z.email(),
+  SMTP_HOST: z.string(),
+  SMTP_PORT: z
+    .string()
+    .regex(/^\d+$/, "SMTP_PORT must be a number")
+    .transform(Number),
+  SMTP_USER: z.string(),
+  SMTP_PASS: z.string(),
+  EMAIL_FROM: z.email(),
 
-  // CLOUDINARY_CLOUD_NAME: z.string(),
-  // CLOUDINARY_API_KEY: z.string(),
-  // CLOUDINARY_API_SECRET: z.string(),
+  CLOUDINARY_CLOUD_NAME: z.string(),
+  CLOUDINARY_API_KEY: z.string(),
+  CLOUDINARY_API_SECRET: z.string()
 
   // GOOGLE_CLIENT_ID: z.string(),
   // GOOGLE_CLIENT_SECRET: z.string(),

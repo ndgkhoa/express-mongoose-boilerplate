@@ -1,0 +1,15 @@
+meta {
+  name: Update Profile
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/auth/profile
+  body: multipartForm
+  auth: none
+}
+
+body:multipart-form {
+  name: John Updated
+}

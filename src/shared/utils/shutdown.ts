@@ -1,5 +1,6 @@
 import { Server } from "http";
 import mongoose from "mongoose";
+
 import { logger } from "@/shared/utils/logger";
 
 export const configureGracefulShutdown = (server: Server) => {

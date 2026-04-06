@@ -83,6 +83,7 @@ modules/user/
 
 ```typescript
 import express from "express";
+
 import { userController } from "./user.controller";
 
 const router = express.Router();
@@ -94,8 +95,8 @@ export default router;
 **`{feature}.controller.ts`** — Request handlers wrapped with AsyncHandler
 
 ```typescript
-import { AsyncHandler } from "@/shared/utils/async-handler";
 import { ApiResponse } from "@/shared/utils/api-response";
+import { AsyncHandler } from "@/shared/utils/async-handler";
 
 export const userController = {
   getUser: AsyncHandler(async (req, res) => {
@@ -108,7 +109,7 @@ export const userController = {
 **`{feature}.model.ts`** — Mongoose schema + TypeScript interface
 
 ```typescript
-import { Schema, model, Document } from "mongoose";
+import { Document, Schema, model } from "mongoose";
 
 export interface IUser extends Document {
   email: string;

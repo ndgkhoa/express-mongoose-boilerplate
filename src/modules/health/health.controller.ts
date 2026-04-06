@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+
 import { ApiResponse } from "@/shared/utils/api-response";
 
 /**
@@ -26,11 +27,9 @@ export const detailedHealthCheck = async (_req: Request, res: Response) => {
     version: process.env.npm_package_version || "1.0.0",
     memory: {
       used:
-        Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) /
-        100,
+        Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
       total:
-        Math.round((process.memoryUsage().heapTotal / 1024 / 1024) * 100) /
-        100,
+        Math.round((process.memoryUsage().heapTotal / 1024 / 1024) * 100) / 100,
       unit: "MB"
     },
     cpu: {

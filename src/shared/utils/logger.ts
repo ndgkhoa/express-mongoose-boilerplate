@@ -1,4 +1,5 @@
 import pino from "pino";
+
 import env from "@/shared/configs/env";
 
 const isProduction = env.NODE_ENV === "production";

@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from "express";
-import env from "@/shared/configs/env";
+import { NextFunction, Request, Response } from "express";
 
-import { logger } from "@/shared/utils/logger";
+import env from "@/shared/configs/env";
 import { ApiError } from "@/shared/errors/api-error";
+import { logger } from "@/shared/utils/logger";
 
 export const errorHandler = (
   err: Error,

@@ -1,8 +1,10 @@
-import app from "@/app";
-import { connectDB } from "@/db/db";
 import env from "@/shared/configs/env";
+import { initJobs } from "@/shared/jobs";
 import { logger } from "@/shared/utils/logger";
 import { configureGracefulShutdown } from "@/shared/utils/shutdown";
+
+import app from "@/app";
+import { connectDB } from "@/db/db";
 
 const port = env.PORT;
 
@@ -12,9 +14,13 @@ connectDB()
       logger.info(`[server]: Server is running at http://localhost:${port}`);
       logger.info(`[server]: Environment: ${env.NODE_ENV}`);
       logger.info(
-        `[server]: Swagger docs are available at http://localhost:${port}/docs`
+        `[server]: Swagger docs are available at http://localhost:${port}/api/docs`
       );
+
+      // Start background jobs after server starts
+      initJobs();
     });
+
     configureGracefulShutdown(server);
   })
   .catch(error => {

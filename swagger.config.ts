@@ -6,7 +6,7 @@ const doc = {
     description: "Mongoose Starter",
     version: "1.0.0"
   },
-  host: `localhost:3000`,
+  host: "localhost:3000/api",
   schemes: ["http"]
 };
 

@@ -1,6 +1,7 @@
 import cors from "cors";
 import { Express } from "express";
 import helmet from "helmet";
+
 import env from "@/shared/configs/env";
 
 export const configureSecurityHeaders = (app: Express) => {

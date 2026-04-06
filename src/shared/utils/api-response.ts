@@ -1,5 +1,6 @@
-import { STATUS_CODES, StatusCode } from "@/shared/constants/status-codes";
 import type { Response } from "express";
+
+import { STATUS_CODES, StatusCode } from "@/shared/constants/status-codes";
 
 type ApiResponseParams<T> = {
   success: boolean;
