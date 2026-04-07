@@ -1,5 +1,12 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
+import {
+  AuthProvider,
+  AuthProviderConst,
+  UserRole,
+  UserRoleConst
+} from "@/types/enums";
+
 export interface IAvatar {
   public_id: string;
   url: string;
@@ -11,14 +18,14 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password?: string;
-  role: "user" | "admin";
+  role: UserRole;
   isEmailVerified: boolean;
   lastLoginAt?: Date;
   failedLoginAttempts: number;
   lockUntil?: Date;
   avatar?: IAvatar;
 
-  provider: "local" | "google" | "github";
+  provider: AuthProvider;
   providerId?: string;
 
   isDeleted: boolean;
@@ -50,8 +57,8 @@ const userSchema = new Schema<IUser>(
     },
     provider: {
       type: String,
-      enum: ["local", "google", "github"],
-      default: "local"
+      enum: Object.values(AuthProviderConst),
+      default: AuthProviderConst.LOCAL
     },
     providerId: {
       type: String,
@@ -59,8 +66,8 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
-      default: "user"
+      enum: Object.values(UserRoleConst),
+      default: UserRoleConst.USER
     },
     avatar: {
       public_id: String,
@@ -100,10 +107,9 @@ const userSchema = new Schema<IUser>(
   }
 );
 
-// Performance Indexes
-userSchema.index({ provider: 1, providerId: 1 }); // Quick lookup for OAuth
+userSchema.index({ provider: 1, providerId: 1 });
 userSchema.index({ role: 1 });
-userSchema.index({ isDeleted: 1 }); // Optimized for soft-delete queries
+userSchema.index({ isDeleted: 1 });
 
 const User: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", userSchema);

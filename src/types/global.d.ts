@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "user" | "manager";
+import { UserRole } from "@/types/enums";
 
 declare global {
   namespace Express {

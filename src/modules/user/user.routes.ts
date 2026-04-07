@@ -1,17 +1,12 @@
 import { Request, Response, Router } from "express";
 
 import { authorizeRoles } from "@/shared/middlewares/authorize-role";
-import { validateRequest } from "@/shared/middlewares/validate-request";
 import { verifyAuthentication } from "@/shared/middlewares/verify-auth";
 import { ApiResponse } from "@/shared/utils/api-response";
 
-import { createUserSchema } from "@/modules/user/user.validation";
+import { UserRoleConst } from "@/types/enums";
 
 const router: Router = Router();
-
-router.post("/", validateRequest(createUserSchema), (req, res) => {
-  return res.status(201).json({ success: true, data: req.body });
-});
 
 // Validates 'id' param by default
 // router.get("/:id", validateObjectId(), getUserById);
@@ -22,7 +17,7 @@ router.post("/", validateRequest(createUserSchema), (req, res) => {
 router.get(
   "/profile",
   verifyAuthentication,
-  authorizeRoles("user", "admin"),
+  authorizeRoles(UserRoleConst.USER, UserRoleConst.ADMIN),
   (req: Request, res: Response) => {
     return ApiResponse.ok(res, "User profile", req.user);
   }
