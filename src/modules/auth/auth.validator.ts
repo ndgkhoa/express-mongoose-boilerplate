@@ -1,6 +1,12 @@
 import * as z from "zod";
 
-export const nameSchema = z
+import {
+  AccountDeletionTypeConst,
+  AuthProviderConst,
+  UserRoleConst
+} from "@/types/enums";
+
+export const NameSchema = z
   .string({ error: "Name must be a string" })
   .trim()
   .min(3, {
@@ -10,7 +16,7 @@ export const nameSchema = z
     message: "Name must be at most 50 characters long"
   });
 
-export const passwordSchema = z
+export const PasswordSchema = z
   .string({ error: "Password must be a string" })
   .trim()
   .min(6, {
@@ -20,18 +26,18 @@ export const passwordSchema = z
     message: "Password must be at most 80 characters long"
   });
 
-export const emailSchema = z
+export const EmailSchema = z
   .email({ message: "Please enter a valid email address." })
   .max(100, { message: "Email must be no more than 100 characters." });
 
-export const roleSchema = z
-  .enum(["user", "admin"], {
-    error: "Role must be either applicant, recruiter, or admin"
+export const RoleSchema = z
+  .enum(UserRoleConst, {
+    error: "Role must be either user or admin"
   })
-  .default("user");
+  .default(UserRoleConst.USER);
 
 export const SigninSchema = z.object({
-  email: emailSchema,
+  email: EmailSchema,
   password: z.string({ error: "Password must be a string" }).trim().min(1, {
     message: "Password is required"
   })
@@ -39,11 +45,11 @@ export const SigninSchema = z.object({
 
 export const SignupSchema = z
   .object({
-    name: nameSchema,
-    email: emailSchema,
-    password: passwordSchema,
-    confirmPassword: passwordSchema,
-    role: roleSchema
+    name: NameSchema,
+    email: EmailSchema,
+    password: PasswordSchema,
+    confirmPassword: PasswordSchema,
+    role: RoleSchema
   })
   .refine(
     data => {
@@ -56,26 +62,26 @@ export const SignupSchema = z
   );
 
 export const ResetPasswordSchema = z.object({
-  email: emailSchema,
-  newPassword: passwordSchema
+  email: EmailSchema,
+  newPassword: PasswordSchema
 });
 
 export const ChangePasswordSchema = z.object({
   oldPassword: z.string({ error: "Password must be a string" }).min(1, {
     message: "Old password is required"
   }),
-  newPassword: passwordSchema
+  newPassword: PasswordSchema
 });
 
 export const UpdateProfileSchema = z.object({
-  name: nameSchema.optional(),
+  name: NameSchema.optional(),
   avatar: z.string().optional()
 });
 
 export const GoogleSigninSchema = z.object({
-  name: nameSchema,
-  email: emailSchema,
-  provider: z.enum(["google", "github"]).default("google"),
+  name: NameSchema,
+  email: EmailSchema,
+  provider: z.enum(AuthProviderConst).default(AuthProviderConst.GOOGLE),
   providerId: z.string({ error: "Provider id must be a string" }).min(1, {
     message: "Provider id is required"
   }),
@@ -88,8 +94,10 @@ export const DeleteAccountSchema = z.object({
     message: "User id is required"
   }),
   type: z
-    .enum(["soft", "hard"], { error: "Type must be either soft or hard" })
-    .default("soft")
+    .enum(AccountDeletionTypeConst, {
+      error: "Type must be either soft or hard"
+    })
+    .default(AccountDeletionTypeConst.SOFT)
 });
 
 export type SignupUserType = z.infer<typeof SignupSchema>;

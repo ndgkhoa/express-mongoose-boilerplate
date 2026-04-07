@@ -15,25 +15,17 @@ import { logger } from "@/shared/utils/logger";
 import RefreshToken from "@/modules/auth/refresh-token.model";
 import User from "@/modules/user/user.model";
 
-/**
- * Express middleware that authenticates a request via access or refresh token.
- *
- * Strategy:
- *   1. Validate the access token from cookies; attach decoded user to req if valid.
- *   2. Fall back to the refresh token: verify, check revocation/expiry, rotate tokens,
- *      set new cookies, and attach the user to req.
- *
- * Calls next(ApiError.unauthorized) on any failure.
- */
+import { CookieTypeConst } from "@/types/enums";
+
 export const verifyAuthentication = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const accessToken = req.cookies?.accessToken;
-  const refreshToken = req.cookies?.refreshToken;
+  const accessToken = req.cookies?.[CookieTypeConst.ACCESS_TOKEN];
+  const refreshToken = req.cookies?.[CookieTypeConst.REFRESH_TOKEN];
 
-  // Prefer access token — fast path, no DB lookup needed
+  // 1. Try access token
   if (accessToken) {
     try {
       const decoded = verifyAccessToken(accessToken);
@@ -44,6 +36,7 @@ export const verifyAuthentication = async (
     }
   }
 
+  // 2. Refresh token required
   if (!refreshToken) {
     return next(ApiError.unauthorized("Unauthorized, please login."));
   }
@@ -61,7 +54,7 @@ export const verifyAuthentication = async (
       tokenHash: refreshTokenHash
     });
 
-    // Revoke all tokens for this user when reuse is detected (token theft signal)
+    // Reuse detection
     if (!storedToken) {
       await RefreshToken.updateMany(
         { userId: decodedRefresh.userId },
@@ -85,7 +78,7 @@ export const verifyAuthentication = async (
       return next(ApiError.unauthorized("User not found."));
     }
 
-    // Rotate: invalidate old token, issue a new pair
+    // 3. Rotate tokens
     const newAccessToken = generateAccessToken({
       _id: user._id.toString(),
       role: user.role
