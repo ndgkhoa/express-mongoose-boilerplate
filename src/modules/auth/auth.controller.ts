@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 
 import { RESET_PASSWORD_TOKEN_EXPIRY } from "@/shared/constants/auth.constants";
 import { ApiError } from "@/shared/errors/api-error";
@@ -9,83 +9,47 @@ import {
 } from "@/shared/helpers/cookie.helper";
 import { ApiResponse } from "@/shared/utils/api-response";
 
-import { AuthService } from "@/modules/auth/auth.service";
+import * as authService from "@/modules/auth/auth.service";
 import type { DeleteAccountType } from "@/modules/auth/auth.validator";
-import { OtpService } from "@/modules/otp/otp.service";
+import { verifyOtp as verifyOtpService } from "@/modules/otp/otp.service";
 import type { VerifyOtpType } from "@/modules/otp/otp.validator";
 import {
   deleteFileFromCloudinary,
   uploadToCloudinary
 } from "@/modules/upload/upload.service";
 
-/**
- * Verifies an OTP submitted by the user.
- * Sets auth cookies on signin OTP success; sets a reset-password cookie on
- * password-reset OTP success.
- */
-export const verifyOtp = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const { email, otpCode, otpType }: VerifyOtpType = req.body;
-  if (!email || !otpCode || !otpType) {
-    return next(
-      ApiError.badRequest("Email, OTP code and OTP type are required")
-    );
-  }
+import { AccountDeletionTypeConst, CookieTypeConst } from "@/types/enums";
 
-  const otp = await OtpService.verifyOtp(
-    next,
+export const verifyOtp = async (req: Request, res: Response) => {
+  const { email, otpCode, otpType }: VerifyOtpType = req.body;
+
+  const result = await verifyOtpService(
     { email, otpCode, otpType },
     {
-      setAuthCookie: (accessToken: string, refreshToken: string) => {
-        setAuthCookies(res, accessToken, refreshToken);
-      }
+      setAuthCookie: (accessToken, refreshToken) =>
+        setAuthCookies(res, accessToken, refreshToken)
     },
     {
-      setCookie: (token: string) => {
+      setCookie: token =>
         setCookies(res, [
           {
-            cookie: "hashedResetPasswordToken",
+            cookie: CookieTypeConst.HASHED_RESET_PASSWORD_TOKEN,
             value: token,
             maxAge: RESET_PASSWORD_TOKEN_EXPIRY
           }
-        ]);
-      }
+        ])
     }
   );
 
-  if (!otp) {
-    return next(ApiError.server("Failed to verify OTP!"));
-  }
-  return ApiResponse.ok(res, otp.message || "OTP verified successfully!");
+  return ApiResponse.ok(
+    res,
+    (result as { message?: string }).message || "OTP verified successfully!"
+  );
 };
 
-/**
- * Registers a new user account.
- * Returns the created user's public fields (name, email, role).
- */
-export const signupUser = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const signupUser = async (req: Request, res: Response) => {
   const { name, email, password, role } = req.body;
-  if (!name || !email || !password) {
-    return next(ApiError.badRequest("Name, email and password are required"));
-  }
-
-  const user = await AuthService.registerUser(next, {
-    name,
-    email,
-    password,
-    role
-  });
-
-  if (!user) {
-    return next(ApiError.server("Failed to register user!"));
-  }
+  const user = await authService.registerUser({ name, email, password, role });
 
   return ApiResponse.created(res, "User registered successfully", {
     name: user.name,
@@ -94,51 +58,20 @@ export const signupUser = async (
   });
 };
 
-/**
- * Initiates the sign-in flow by validating credentials and sending an OTP.
- * The client must follow up with POST /verify-otp to complete authentication.
- */
-export const signinUser = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const signinUser = async (req: Request, res: Response) => {
   const { email, password } = req.body;
-  if (!email || !password) {
-    return next(ApiError.badRequest("Email and password are required"));
-  }
+  const result = await authService.loginAndSendOtp({ email, password });
 
-  const result = await AuthService.loginAndSendOtp(next, { email, password });
-
-  if (!result) {
-    return next(ApiError.server("Failed to login!"));
-  }
-
-  return ApiResponse.ok(res, result.message || "Otp sent successfully!");
+  return ApiResponse.ok(res, result.message || "OTP sent successfully!");
 };
 
-/**
- * Returns the authenticated user's profile.
- * Rejects soft-deleted accounts with a 404.
- */
-export const getUserProfile = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const userId = req.user?._id;
-  if (!userId) {
-    return next(ApiError.unauthorized("Unauthorized access"));
-  }
+export const getUserProfile = async (req: Request, res: Response) => {
+  if (!req.user?._id) throw ApiError.unauthorized("Unauthorized access");
 
-  const user = await AuthService.getUserProfile(userId.toString());
-  if (!user) {
-    return next(ApiError.notFound("User not found"));
-  }
-
-  if (user.isDeleted) {
-    return next(ApiError.notFound("This account has been deactivated."));
-  }
+  const user = await authService.getUserProfile(req.user._id);
+  if (!user) throw ApiError.notFound("User not found");
+  if (user.isDeleted)
+    throw ApiError.notFound("This account has been deactivated.");
 
   return ApiResponse.ok(res, "User profile fetched successfully", {
     user: {
@@ -152,258 +85,112 @@ export const getUserProfile = async (
   });
 };
 
-/**
- * Updates the authenticated user's name and/or avatar.
- * Deletes the old Cloudinary asset before uploading a new one.
- */
-export const updateProfile = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const data = req.body;
-  const { name } = data;
+export const updateProfile = async (req: Request, res: Response) => {
+  if (!req.user?._id) throw ApiError.unauthorized("Unauthorized access");
 
-  if (!req.user?._id) {
-    return next(ApiError.unauthorized("Unauthorized access"));
-  }
+  const { name } = req.body;
+  const user = await authService.getUserProfile(req.user._id);
+  if (!user) throw ApiError.notFound("User not found");
 
-  const user = await AuthService.getUserProfile(req.user?._id.toString());
-
-  if (!user) {
-    return next(ApiError.notFound("User not found"));
-  }
-
-  if (req?.file && user?.avatar?.public_id) {
+  if (req.file && user.avatar?.public_id) {
     await deleteFileFromCloudinary([user.avatar.public_id]);
   }
 
-  if (req?.file && user?.avatar) {
+  if (req.file) {
     const file = await uploadToCloudinary(req.file.buffer, {
       folder: "uploads/files",
       resource_type: "auto"
     });
-    user.avatar = {
-      public_id: req.file
-        ? file.public_id
-        : (user?.avatar?.public_id as string),
-      url: req.file ? file.url : (user.avatar.url as string),
-      size: req.file ? file.size : (user.avatar.size as number)
-    };
+    user.avatar = { public_id: file.public_id, url: file.url, size: file.size };
   }
 
-  if (name) {
-    user.name = name;
-  }
-
+  if (name) user.name = name;
   await user.save();
 
   return ApiResponse.Success(res, "Profile updated successfully!", user);
 };
 
-/**
- * Rotates the access/refresh token pair using the refresh token from cookies.
- * Issues new cookies on success.
- */
-export const refreshToken = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const accessToken = req.cookies?.accessToken;
-  const refreshToken = req.cookies?.refreshToken;
+export const refreshToken = async (req: Request, res: Response) => {
+  const accessToken = req.cookies?.[CookieTypeConst.ACCESS_TOKEN] ?? null;
+  const refreshToken = req.cookies?.[CookieTypeConst.REFRESH_TOKEN];
 
-  const token = await AuthService.refreshTokens(
-    next,
-    accessToken,
-    refreshToken
-  );
-
-  if (!token) {
-    return next(ApiError.server("Failed to refresh tokens!"));
-  }
-
-  const newAccessToken = token.accessToken;
-  const newRefreshToken = token.refreshToken;
-  setAuthCookies(res, newAccessToken, newRefreshToken);
+  const token = await authService.refreshTokens(accessToken, refreshToken);
+  setAuthCookies(res, token.accessToken, token.refreshToken);
 
   return ApiResponse.Success(res, "Tokens refreshed successfully!");
 };
 
-/**
- * Logs out the authenticated user by revoking all their refresh tokens.
- * Clears auth cookies from the response.
- */
-export const logoutUser = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const userId = req.user?._id;
-  if (!userId) {
-    return next(ApiError.unauthorized("Unauthorized access"));
-  }
+export const logoutUser = async (req: Request, res: Response) => {
+  if (!req.user?._id) throw ApiError.unauthorized("Unauthorized access");
 
-  await AuthService.logoutUser(userId.toString());
-
+  await authService.logoutUser(req.user._id);
   clearAuthCookies(res);
 
   return ApiResponse.Success(res, "Logged out successfully!");
 };
 
-/**
- * Sends a password-reset OTP to the given email address.
- * Returns a generic success message regardless of whether the email exists
- * (prevents user enumeration).
- */
-export const forgotPassword = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body;
-  if (!email) {
-    return next(ApiError.badRequest("Email is required!"));
-  }
+  const result = await authService.forgotPassword(email);
 
-  const result = await AuthService.forgotPassword(next, email);
-
-  if (!result) {
-    return next(ApiError.server("Failed to send otp!"));
-  }
-
-  return ApiResponse.ok(res, result.message || "Otp sent successfully!");
+  return ApiResponse.ok(res, result.message || "OTP sent successfully!");
 };
 
-/**
- * Resets the user's password after successful OTP verification.
- * Requires the hashed reset-password token cookie set during OTP verification.
- */
-export const resetPassword = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const resetPassword = async (req: Request, res: Response) => {
   const { newPassword, email } = req.body;
-  if (!email || !newPassword) {
-    return next(ApiError.badRequest("Newpassword and email are required!"));
-  }
 
-  const hashedResetPasswordToken = req.cookies?.hashedResetPasswordToken;
-
+  const hashedResetPasswordToken =
+    req.cookies?.[CookieTypeConst.HASHED_RESET_PASSWORD_TOKEN];
   if (!hashedResetPasswordToken) {
-    return next(
-      ApiError.badRequest("Reset password token not found or expired")
-    );
+    throw ApiError.badRequest("Reset password token not found or expired");
   }
 
-  const result = await AuthService.resetPassword(next, email, newPassword);
+  const result = await authService.resetPassword(email, newPassword);
+  res.clearCookie(CookieTypeConst.HASHED_RESET_PASSWORD_TOKEN);
 
-  if (!result) {
-    return next(ApiError.server("Failed to reset password!"));
-  }
-
-  res.clearCookie("hashedResetPasswordToken");
   return ApiResponse.ok(res, result.message || "Password reset successfully!");
 };
 
-/**
- * Changes the password for the authenticated user.
- * Verifies the current password before applying the update.
- * Clears auth cookies to force re-login after the change.
- */
-export const changePassword = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const userId = req?.user?._id;
-
-  if (!userId) {
-    return next(ApiError.unauthorized("Unauthorized access"));
-  }
+export const changePassword = async (req: Request, res: Response) => {
+  if (!req.user?._id) throw ApiError.unauthorized("Unauthorized access");
 
   const { oldPassword, newPassword } = req.body;
-
-  if (!oldPassword || !newPassword) {
-    return next(
-      ApiError.badRequest("Old password and new password are required")
-    );
-  }
-
-  const result = await AuthService.changePassword(next, {
-    userId: userId.toString(),
+  const result = await authService.changePassword({
+    userId: req.user._id,
     oldPassword,
     newPassword
   });
 
-  if (!result) {
-    return next(ApiError.server("Failed to change password!"));
-  }
-
   clearAuthCookies(res);
-
   return ApiResponse.ok(
     res,
     result.message || "Password changed successfully!"
   );
 };
 
-/**
- * Deletes or deactivates the authenticated user's account.
- *   - soft: marks the account as deleted; can be reactivated within the grace period.
- *   - hard: permanently deletes the account and removes associated Cloudinary assets.
- */
-export const deleteAccount = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const deleteAccount = async (req: Request, res: Response) => {
   const { userId, type }: DeleteAccountType = req.body;
 
-  if (!userId || !type) {
-    return next(ApiError.badRequest("User id and type are required!"));
-  }
-
-  const reqUserId = req?.user?._id;
-
-  if (!reqUserId) {
-    return next(ApiError.unauthorized("Unauthorized access"));
-  }
-
-  if (userId !== reqUserId) {
-    return next(
-      ApiError.unauthorized("you are not authorized to perform this action")
+  if (!req.user?._id) throw ApiError.unauthorized("Unauthorized access");
+  if (userId !== req.user._id) {
+    throw ApiError.unauthorized(
+      "You are not authorized to perform this action"
     );
   }
 
-  await AuthService.deleteOrDeactiveAccount(next, userId, type);
+  await authService.deleteOrDeactivateAccount(userId, type);
 
-  if (type === "hard") {
-    clearAuthCookies(res);
-  }
+  if (type === AccountDeletionTypeConst.HARD) clearAuthCookies(res);
 
   return ApiResponse.Success(
     res,
-    `Account ${type === "soft" ? "deactivated" : "deleted"} successfully!`
+    `Account ${type === AccountDeletionTypeConst.SOFT ? "deactivated" : "deleted"} successfully!`
   );
 };
 
-/**
- * Reactivates a soft-deleted account if the reactivation window has not expired.
- */
-export const reactivateAccount = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const userId = req?.user?._id;
+export const reactivateAccount = async (req: Request, res: Response) => {
+  if (!req.user?._id) throw ApiError.unauthorized("Unauthorized access");
 
-  if (!userId) {
-    return next(ApiError.unauthorized("Unauthorized access"));
-  }
-
-  await AuthService.reactivateAccount(next, userId);
-
+  await authService.reactivateAccount(req.user._id);
   return ApiResponse.Success(res, "Account reactivated successfully!");
 };
