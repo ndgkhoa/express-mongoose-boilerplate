@@ -4,7 +4,7 @@ import env from "@/shared/configs/env";
 
 let transporter: nodemailer.Transporter | null = null;
 
-export function getTransporter() {
+export const getTransporter = () => {
   if (transporter) return transporter;
   const host = env.SMTP_HOST;
   const port = Number(env.SMTP_PORT || 465);
@@ -22,4 +22,4 @@ export function getTransporter() {
     auth: { user, pass }
   });
   return transporter;
-}
+};
