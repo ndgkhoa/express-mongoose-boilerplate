@@ -17,6 +17,8 @@ export const envSchema = z.object({
 
   DATABASE_URL: z.url(),
 
+  REDIS_URL: z.url(),
+
   CORS_ORIGIN: z.string(),
 
   LOG_LEVEL: z
@@ -39,15 +41,15 @@ export const envSchema = z.object({
 
   CLOUDINARY_CLOUD_NAME: z.string(),
   CLOUDINARY_API_KEY: z.string(),
-  CLOUDINARY_API_SECRET: z.string()
+  CLOUDINARY_API_SECRET: z.string(),
 
-  // GOOGLE_CLIENT_ID: z.string(),
-  // GOOGLE_CLIENT_SECRET: z.string(),
-  // GOOGLE_REDIRECT_URI: z.url(),
+  GOOGLE_CLIENT_ID: z.string(),
+  GOOGLE_CLIENT_SECRET: z.string(),
+  GOOGLE_REDIRECT_URI: z.url()
 
   // GITHUB_CLIENT_ID: z.string(),
   // GITHUB_CLIENT_SECRET: z.string(),
-  // GITHUB_REDIRECT_URI: z.url()
+  // GITHUB_REDIRECT_URI: z.url(),
 });
 
 export type Env = z.infer<typeof envSchema>;

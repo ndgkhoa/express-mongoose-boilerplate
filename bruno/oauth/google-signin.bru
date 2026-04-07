@@ -1,0 +1,21 @@
+meta {
+  name: Google Signin
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/oauth/google
+  body: none
+  auth: none
+}
+
+docs {
+  Initiates Google OAuth2 sign in flow.
+  Opens a Google consent page and redirects back to /oauth/google/callback on success.
+
+  Note: This endpoint requires a browser — it triggers a redirect and cannot be
+  tested directly in Bruno. Open the URL in a browser to start the OAuth flow.
+
+  Scopes requested: email, profile, openid
+}

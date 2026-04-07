@@ -66,7 +66,12 @@ export const sendOtp = async (payload: SendOtpPayload) => {
   await sendEmail({
     email,
     subject,
-    html: `<p>Your OTP for ${otpType}: ${otp.code}</p>`
+    // html: `<p>Your OTP for ${otpType}: ${otp.code}</p>`,
+    templateName: "signin-otp",
+    data: {
+      name: user.name,
+      code: otp.code
+    }
   });
 
   await Otp.create({
@@ -82,7 +87,6 @@ export const sendOtp = async (payload: SendOtpPayload) => {
   return { message: `OTP sent to ${email} successfully` };
 };
 
-// Generates a hashed reset token and sets it as a short-lived cookie
 const handlePasswordReset = (
   user: { _id: string },
   context: ResetPasswordContext

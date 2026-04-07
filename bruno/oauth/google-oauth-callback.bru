@@ -1,0 +1,35 @@
+meta {
+  name: Google OAuth Callback
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/oauth/google/callback
+  body: none
+  auth: none
+}
+
+docs {
+  Google OAuth2 callback endpoint — handled automatically by Passport.js after Google redirects back.
+
+  This endpoint is not called manually. Google redirects here after the user approves
+  the consent screen from /oauth/google.
+
+  On success: sets access_token and refresh_token cookies, returns user profile.
+  On failure: redirects to /login.
+
+  Response body (200):
+  {
+    "user": {
+      "_id": "...",
+      "name": "John Doe",
+      "email": "john@gmail.com",
+      "role": "user",
+      "avatar": "https://...",
+      "isEmailVerified": true,
+      "lastLoginAt": "2026-04-07T...",
+      "provider": "google"
+    }
+  }
+}

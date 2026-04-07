@@ -25,7 +25,7 @@ import User from "@/modules/user/user.model";
 import { AccountDeletionTypeConst, OtpTypeConst } from "@/types/enums";
 import type { AccountDeletionType, UserRole } from "@/types/enums";
 
-type SessionContext = {
+export type SessionContext = {
   setAuthCookie?: (accessToken: string, refreshToken: string) => void;
 };
 
@@ -103,7 +103,6 @@ export const loginAndSendOtp = async ({
   }
 };
 
-// Creates tokens and stores refresh token — called after OTP verification
 export const handleToken = async (
   user: { _id: string; isEmailVerified: boolean; role: UserRole },
   context: SessionContext
@@ -130,7 +129,7 @@ export const handleToken = async (
   await User.updateOne(
     { _id: user._id },
     {
-      $set: { lastLogin: new Date(), failedLoginAttempts: 0 },
+      $set: { lastLoginAt: new Date(), failedLoginAttempts: 0 },
       $unset: { lockUntil: 1 }
     }
   );

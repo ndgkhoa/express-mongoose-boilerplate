@@ -8,6 +8,11 @@ if (!env.DATABASE_URL) {
 }
 
 export const connectDB = async (): Promise<void> => {
-  const conn = await mongoose.connect(env.DATABASE_URL as string);
-  logger.info(`MongoDB Connected: ${conn.connection.host}`);
+  try {
+    const conn = await mongoose.connect(env.DATABASE_URL as string);
+    logger.info(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (error) {
+    logger.error(error, "MongoDB Connection Failed");
+    process.exit(1);
+  }
 };
