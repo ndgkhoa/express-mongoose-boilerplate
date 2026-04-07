@@ -1,10 +1,10 @@
+import { connectDB } from "@/shared/configs/db";
 import env from "@/shared/configs/env";
 import { initJobs } from "@/shared/jobs";
 import { logger } from "@/shared/utils/logger";
 import { configureGracefulShutdown } from "@/shared/utils/shutdown";
 
 import app from "@/app";
-import { connectDB } from "@/db/db";
 
 const port = env.PORT;
 

@@ -9,7 +9,7 @@ type sendMail = {
   html: string;
 };
 
-export async function sendEmail({ from, email, subject, html }: sendMail) {
+export const sendEmail = async ({ from, email, subject, html }: sendMail) => {
   const transporter = getTransporter();
 
   return transporter
@@ -22,4 +22,4 @@ export async function sendEmail({ from, email, subject, html }: sendMail) {
     .catch(_err => {
       throw ApiError.badRequest("Failed to send email");
     });
-}
+};
