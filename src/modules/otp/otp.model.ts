@@ -2,18 +2,17 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 
 import {
   OTP_EXPIRES_IN,
-  OTP_MAX_ATTEMPTS,
-  OTP_TYPES
+  OTP_MAX_ATTEMPTS
 } from "@/shared/constants/otp.constants";
 
-import type { OTPType } from "@/types/otp.types";
+import { OtpType, OtpTypeConst } from "@/types/enums";
 
 export interface IOtp extends Document {
   _id: mongoose.Types.ObjectId;
   email: string;
   otpHashCode: string;
   nextResendAllowedAt: Date;
-  type: OTPType;
+  type: OtpType;
   expiresAt: Date;
   isUsed: boolean;
   usedAt?: Date;
@@ -42,7 +41,7 @@ const otpSchema = new Schema<IOtp>(
     },
     type: {
       type: String,
-      enum: OTP_TYPES,
+      enum: Object.values(OtpTypeConst),
       required: [true, "OTP type is required"]
     },
     expiresAt: {
@@ -70,12 +69,11 @@ const otpSchema = new Schema<IOtp>(
   }
 );
 
-// Performance Indexes
-otpSchema.index({ email: 1, type: 1 }); // Quick lookup by email and type
+otpSchema.index({ email: 1, type: 1 });
 otpSchema.index(
   { createdAt: 1 },
   { expireAfterSeconds: OTP_EXPIRES_IN / 1000 }
-); // ttl index
+);
 
 const Otp: Model<IOtp> =
   mongoose.models.Otp || mongoose.model<IOtp>("Otp", otpSchema);
