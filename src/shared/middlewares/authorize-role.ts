@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 
 import { ApiError } from "@/shared/errors/api-error";
 
-import type { UserRole } from "@/types/global";
+import { UserRole } from "@/types/enums";
 
 export const authorizeRoles = (...allowedRoles: UserRole[]) => {
   return (req: Request, _res: Response, next: NextFunction) => {

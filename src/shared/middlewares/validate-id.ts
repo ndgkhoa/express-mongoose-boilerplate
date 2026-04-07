@@ -3,10 +3,6 @@ import { isValidObjectId } from "mongoose";
 
 import { ApiError } from "@/shared/errors/api-error";
 
-/**
- * Middleware to validate MongoDB ObjectId
- * @param paramName - The name of the parameter to validate (default: "id")
- */
 export const validateObjectId = (paramName: string = "id") => {
   return (req: Request, _res: Response, next: NextFunction) => {
     const value =

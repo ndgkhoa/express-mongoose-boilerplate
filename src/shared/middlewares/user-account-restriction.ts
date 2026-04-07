@@ -5,11 +5,11 @@ import { logger } from "@/shared/utils/logger";
 
 import User from "@/modules/user/user.model";
 
-export async function checkUserAccountRestriction(
+export const checkUserAccountRestriction = async (
   req: Request,
   _res: Response,
   next: NextFunction
-): Promise<void> {
+): Promise<void> => {
   try {
     if (!req.user?._id) {
       return next(ApiError.unauthorized("Unauthorized"));
@@ -48,4 +48,4 @@ export async function checkUserAccountRestriction(
     logger.error(err?.message || err);
     return next(ApiError.server("Something went wrong"));
   }
-}
+};

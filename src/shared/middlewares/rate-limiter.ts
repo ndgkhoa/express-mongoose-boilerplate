@@ -3,11 +3,6 @@ import { rateLimit } from "express-rate-limit";
 import { STATUS_CODES } from "@/shared/constants/status-codes";
 import { ApiError } from "@/shared/errors/api-error";
 
-/**
- * Standard rate limiter middleware
- * Limits each IP to 100 requests per 15-minute window
- */
-
 export const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per window
@@ -24,12 +19,9 @@ export const rateLimiter = rateLimit({
   }
 });
 
-/**
- * Stricter rate limiter for sensitive routes (e.g., auth, login)
- */
 export const authRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // Limit each IP to 5 failed attempts per hour
+  max: 5,
   handler: (_req, _res, next, _options) => {
     next(
       ApiError.tooManyRequests(
@@ -39,9 +31,6 @@ export const authRateLimiter = rateLimit({
   }
 });
 
-/**
- * Rate limiter for login route
- */
 export const signinRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -54,9 +43,6 @@ export const signinRateLimiter = rateLimit({
   legacyHeaders: false
 });
 
-/**
- * Rate limiter for registration route
- */
 export const signupRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
