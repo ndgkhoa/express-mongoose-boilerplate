@@ -83,9 +83,33 @@ Create a production-ready Express.js + MongoDB starter template that:
 **Target Release**: Q2 2026  
 **Estimated Duration**: 4-6 weeks  
 **Priority**: High
-**Status**: Auth module foundation in place; ready for implementation
+**Status**: Foundation complete; OAuth + OTP implemented; finishing core auth
 
-#### Features
+#### Completed Features ✅
+
+**OAuth Integration**:
+
+- [x] Google OAuth strategy via Passport.js
+- [x] OAuth login flow (`GET /oauth/google` → callback → set cookies)
+- [x] User find/create from OAuth profile
+- [x] Reuse `handleToken()` from auth service
+
+**OTP & Email System**:
+
+- [x] OTP generation & validation
+- [x] Email template system (EJS) — dynamic variable rendering
+- [x] OTP email template with `<%= name %>` and `<%= code %>`
+- [x] Nodemailer integration for email sending
+- [x] Redis caching for OTP with TTL
+
+**Infrastructure**:
+
+- [x] Redis client initialization with cache helpers
+- [x] Passport.js GoogleOAuth strategy setup
+- [x] EJS template rendering utility
+- [x] Graceful shutdown includes Redis disconnect
+
+#### Pending Features
 
 **User Authentication**:
 
@@ -99,13 +123,13 @@ Create a production-ready Express.js + MongoDB starter template that:
 
 **User API Endpoints**:
 
-- [ ] `POST /api/v1/auth/register` — User registration
-- [ ] `POST /api/v1/auth/login` — User login (returns access + refresh tokens)
-- [ ] `POST /api/v1/auth/refresh` — Refresh token endpoint
-- [ ] `POST /api/v1/auth/logout` — Logout (invalidate tokens)
-- [ ] `GET /api/v1/users/:id` — Get user profile
-- [ ] `PUT /api/v1/users/:id` — Update user profile
-- [ ] `DELETE /api/v1/users/:id` — Delete user account
+- [ ] `POST /auth/register` — User registration with email verification
+- [ ] `POST /auth/login` — User login (email + password)
+- [ ] `POST /auth/refresh` — Refresh token endpoint
+- [ ] `POST /auth/logout` — Logout (invalidate tokens)
+- [ ] `GET /users/:id` — Get user profile
+- [ ] `PUT /users/:id` — Update user profile
+- [ ] `DELETE /users/:id` — Delete user account
 
 **Authorization**:
 
@@ -114,18 +138,12 @@ Create a production-ready Express.js + MongoDB starter template that:
 - [ ] Permission-based endpoint protection
 - [ ] Middleware for role/permission checks
 
-**Email Notifications**:
-
-- [ ] Email service integration (SendGrid or Nodemailer)
-- [ ] Confirmation email on registration
-- [ ] Password reset email
-- [ ] Account activity notifications
-
 **Testing**:
 
 - [ ] Unit tests for auth logic (>80% coverage)
-- [ ] Integration tests for API endpoints
-- [ ] Validation tests for password rules
+- [ ] Integration tests for OAuth flow
+- [ ] OTP generation & verification tests
+- [ ] Email template rendering tests
 
 ---
 
@@ -134,15 +152,17 @@ Create a production-ready Express.js + MongoDB starter template that:
 **Target Release**: Q3 2026  
 **Estimated Duration**: 6-8 weeks  
 **Priority**: Medium
+**Status**: Redis infrastructure ready; caching patterns can now be implemented
 
 #### Features
 
-**Caching Layer**:
+**Caching Patterns** (Redis infrastructure in place):
 
-- [ ] Redis integration
 - [ ] Cache-aside pattern for queries
-- [ ] Automatic invalidation strategies
-- [ ] Rate limiting using Redis
+- [ ] Session token caching (24h TTL)
+- [ ] Rate limiting using Redis counters
+- [ ] Automatic cache invalidation on user updates
+- [ ] Cache warming strategies
 
 **File Upload**:
 
@@ -158,16 +178,17 @@ Create a production-ready Express.js + MongoDB starter template that:
 - [ ] Soft delete support (timestamp-based)
 - [ ] Audit logging (who, what, when)
 
-**Notifications**:
+**Notifications** (Email template system in place):
 
-- [ ] Push notifications framework
+- [ ] Welcome email on registration
+- [ ] Password reset flow with email
 - [ ] Webhook support for external services
-- [ ] Event streaming (basic pub/sub)
+- [ ] Event-driven notifications
 
 **Monitoring**:
 
 - [ ] Application metrics collection
-- [ ] Health check enhancements
+- [ ] Health check enhancements (Redis status)
 - [ ] Performance monitoring
 - [ ] Error tracking integration
 

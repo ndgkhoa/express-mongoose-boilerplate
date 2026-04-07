@@ -3,9 +3,10 @@
 ## Project Identity
 
 **Name**: servercn-mongoose-starter  
-**Version**: 1.0.0  
+**Version**: 1.1.0 (Phase 2 In Progress)  
 **Type**: Express.js API Starter Template  
 **Status**: Active Development  
+**Last Updated**: 2026-04-07  
 **Repository**: https://github.com/yourusername/servercn-mongoose-starter
 
 ## Purpose
@@ -31,9 +32,13 @@
 | **Runtime**      | Node.js + ESM                    | Latest LTS | JavaScript runtime with ES modules    |
 | **Language**     | TypeScript                       | 6.0+       | Type safety, strict mode enabled      |
 | **Framework**    | Express                          | 5.x        | HTTP server & routing                 |
+| **Auth**         | Passport.js                      | 0.7.0      | OAuth strategy framework              |
 | **Database**     | MongoDB + Mongoose               | 9.x        | NoSQL database & ODM                  |
+| **Cache**        | Redis                            | 5.11.0     | Session storage & caching layer       |
 | **Validation**   | Zod                              | 4.x        | Runtime schema & env validation       |
 | **Logging**      | Pino + pino-pretty               | 10.x       | Structured logging (dev/prod)         |
+| **Templates**    | EJS                              | 5.0.1      | Dynamic email template rendering      |
+| **Email**        | Nodemailer                       | Latest     | SMTP email sending                    |
 | **Security**     | Helmet, CORS                     | Latest     | HTTP headers, cross-origin requests   |
 | **HTTP Logging** | Morgan                           | 1.10+      | Request/response logging              |
 | **API Docs**     | swagger-autogen + UI             | 2.23+      | Auto-generated OpenAPI docs           |
@@ -72,27 +77,29 @@ Routes are organized by feature modules (health, user, etc.) with no version pre
 
 ## Environment Configuration
 
-### Currently Validated Variables
+### Currently Validated Variables (v1.1.0)
 
-| Variable       | Type   | Default               | Description                                                                  |
-| -------------- | ------ | --------------------- | ---------------------------------------------------------------------------- |
-| `NODE_ENV`     | enum   | development           | Runtime environment: `development` \| `test` \| `production`                 |
-| `PORT`         | number | 3000                  | Server port                                                                  |
-| `DATABASE_URL` | URL    | -                     | MongoDB connection string (e.g., mongodb://localhost:27017/dbname)           |
-| `CORS_ORIGIN`  | URL    | http://localhost:3000 | Allowed CORS origin for frontend requests                                    |
-| `LOG_LEVEL`    | enum   | info                  | Pino log level: `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` |
+| Variable               | Type   | Default                                     | Description                                                                  |
+| ---------------------- | ------ | ------------------------------------------- | ---------------------------------------------------------------------------- |
+| `NODE_ENV`             | enum   | development                                 | Runtime environment: `development` \| `test` \| `production`                 |
+| `PORT`                 | number | 3000                                        | Server port                                                                  |
+| `DATABASE_URL`         | URL    | -                                           | MongoDB connection string (e.g., mongodb://localhost:27017/dbname)           |
+| `REDIS_URL`            | URL    | redis://localhost:6379                      | Redis connection URL (NEW)                                                   |
+| `CORS_ORIGIN`          | URL    | http://localhost:3000                       | Allowed CORS origin for frontend requests                                    |
+| `LOG_LEVEL`            | enum   | info                                        | Pino log level: `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` |
+| `GOOGLE_CLIENT_ID`     | string | -                                           | Google OAuth 2.0 Client ID (NEW)                                             |
+| `GOOGLE_CLIENT_SECRET` | string | -                                           | Google OAuth 2.0 Client Secret (NEW)                                         |
+| `GOOGLE_REDIRECT_URI`  | URL    | http://localhost:3000/oauth/google/callback | Google OAuth callback URL (NEW)                                              |
 
 ### Future Variables (Phase 2+, currently commented in .env.example)
 
-| Variable                       | Type   | Purpose                            | Status  |
-| ------------------------------ | ------ | ---------------------------------- | ------- |
-| `JWT_ACCESS_SECRET`            | string | JWT access token signing (v1.1.0)  | Planned |
-| `JWT_REFRESH_SECRET`           | string | JWT refresh token signing (v1.1.0) | Planned |
-| `CRYPTO_SECRET`                | string | Encryption/decryption key          | Planned |
-| `SMTP_HOST`, `SMTP_PORT`, etc. | string | Email notifications (v1.1.0)       | Planned |
-| `CLOUDINARY_*`                 | string | File uploads (v1.2.0)              | Planned |
-| `GOOGLE_CLIENT_ID`, etc.       | string | OAuth integration (v1.1.0)         | Planned |
-| `GITHUB_CLIENT_ID`, etc.       | string | OAuth integration (v1.1.0)         | Planned |
+| Variable                       | Type   | Purpose                   | Status          |
+| ------------------------------ | ------ | ------------------------- | --------------- |
+| `JWT_ACCESS_SECRET`            | string | JWT access token signing  | Phase 2 Pending |
+| `JWT_REFRESH_SECRET`           | string | JWT refresh token signing | Phase 2 Pending |
+| `SMTP_HOST`, `SMTP_PORT`, etc. | string | Email server config       | Phase 2 Pending |
+| `CLOUDINARY_*`                 | string | File uploads (Phase 3)    | Planned         |
+| `GITHUB_CLIENT_ID`, etc.       | string | GitHub OAuth integration  | Phase 2 Pending |
 
 **Setup**: Create `.env.development.local` and `.env.production.local` files. The project uses `dotenv-flow` to load environment variables with proper precedence.
 
@@ -122,6 +129,22 @@ Routes are organized by feature modules (health, user, etc.) with no version pre
 | GET    | `/health`          | 200 OK | `{ status, timestamp, uptime }`                                    |
 | GET    | `/health/detailed` | 200 OK | `{ status, timestamp, uptime, environment, version, memory, cpu }` |
 
+### OAuth Endpoints (v1.1.0 - NEW)
+
+| Method | Path                     | Status | Response                             |
+| ------ | ------------------------ | ------ | ------------------------------------ |
+| GET    | `/oauth/google`          | 302    | Redirects to Google consent          |
+| GET    | `/oauth/google/callback` | 302    | Redirects to frontend + sets cookies |
+
+### Auth Endpoints (v1.1.0 - Partial)
+
+| Method | Path               | Status | Implementation Status             |
+| ------ | ------------------ | ------ | --------------------------------- |
+| POST   | `/auth/send-otp`   | 200 OK | OTP + Email template rendering ✅ |
+| POST   | `/auth/verify-otp` | 200 OK | OTP verification with Redis ✅    |
+| POST   | `/auth/register`   | -      | Pending                           |
+| POST   | `/auth/login`      | -      | Pending                           |
+
 **Response Format** (ApiResponse):
 
 ```json
@@ -131,7 +154,7 @@ Routes are organized by feature modules (health, user, etc.) with no version pre
   "statusCode": 200,
   "data": {
     "status": "healthy",
-    "timestamp": "2026-04-03T14:30:00.000Z",
+    "timestamp": "2026-04-07T14:30:00.000Z",
     "uptime": 45.123
   }
 }
@@ -243,33 +266,45 @@ All pull requests must pass:
 - User model (schema with OAuth support)
 - Auth module (placeholder for v1.1.0)
 
-### Phase 2: Core Features (Planned - v1.1.0)
+### Phase 2: Core Features (In Progress - v1.1.0)
 
-**Status**: In Progress (Auth module placeholder exists)
+**Status**: OAuth + Email templates ✅ | Core auth ⏳
 
-**Functional Requirements**:
+**Completed Infrastructure** ✅:
 
-- [ ] User authentication (JWT + OAuth: Google, GitHub)
-- [ ] User registration & login endpoints
-- [ ] User profile CRUD
+- [x] Redis client + cache helpers (setCache, getCache, deleteCache with TTL)
+- [x] Passport.js Google OAuth 2.0 strategy
+- [x] OAuth login flow (GET /oauth/google → callback → setAuthCookies)
+- [x] User find/create from OAuth profile
+- [x] EJS template rendering system for dynamic emails
+- [x] OTP email template (signin-otp.ejs) with variables
+- [x] Nodemailer email service (updated to use templates)
+- [x] OTP generation + Redis caching (5-10 min TTL)
+- [x] Graceful Redis disconnect on shutdown
+
+**Pending Functional Requirements**:
+
+- [ ] JWT access/refresh token generation & validation
+- [ ] User registration endpoint (`POST /auth/register`)
+- [ ] User login endpoint with password (`POST /auth/login`)
 - [ ] Password hashing (bcrypt) & verification
 - [ ] Refresh token mechanism
 - [ ] User roles & permissions (RBAC)
-- [ ] Email verification & password reset
+- [ ] Email verification flow
 
 **Non-Functional Requirements**:
 
-- Comprehensive unit & integration tests (>80% coverage)
-- API documentation (Swagger auto-generated)
-- Input validation (Zod schemas)
-- Rate limiting per endpoint
-- Request logging & audit trail
+- [ ] Comprehensive unit & integration tests (>80% coverage)
+- [ ] API documentation (Swagger auto-generated)
+- [ ] Rate limiting per endpoint
+- [ ] Request logging & audit trail
 
 **Module Status**:
 
-- Auth module created (placeholder controllers)
-- User model defined (with OAuth support)
-- Ready for implementation
+- auth module: controller + service with reusable `handleToken()` exported
+- oauth module: controller + service + routes (Google OAuth complete)
+- otp module: service with Redis caching + email templates
+- User model: supports both email/password and OAuth login
 
 ### Phase 3: Advanced Features (Planned - v1.2.0)
 

@@ -1,8 +1,8 @@
 # System Architecture
 
-**Project**: servercn-mongoose-starter v1.0.0  
-**Last Updated**: 2026-04-04  
-**Architecture Style**: Feature-based modular with layered middleware
+**Project**: servercn-mongoose-starter v1.1.0  
+**Last Updated**: 2026-04-07  
+**Architecture Style**: Feature-based modular with layered middleware + OAuth + Redis
 
 ## High-Level Architecture
 
@@ -78,12 +78,13 @@ The order is **critical** for correct behavior. Express processes middleware seq
 | 3     | `express.urlencoded()`       | Parse form data                | app.ts             |
 | 4     | `cookieParser()`             | Cookie handling                | app.ts             |
 | 5     | `morgan()`                   | HTTP request logging           | app.ts             |
-| 6     | `setupSwagger()`             | Swagger UI setup               | app.ts             |
-| 7     | Routes                       | Feature routes                 | app.ts             |
-| 8     | `notFoundHandler`            | 404 responses                  | app.ts             |
-| 9     | `errorHandler`               | Global error handling          | app.ts             |
+| 6     | `passport.initialize()`      | OAuth middleware setup         | app.ts             |
+| 7     | `setupSwagger()`             | Swagger UI setup               | app.ts             |
+| 8     | Routes                       | Feature routes                 | app.ts             |
+| 9     | `notFoundHandler`            | 404 responses                  | app.ts             |
+| 10    | `errorHandler`               | Global error handling          | app.ts             |
 
-**Critical**: Security middleware MUST be first. Error handler MUST be last.
+**Critical**: Security middleware MUST be first. Passport goes before routes. Error handler MUST be last.
 
 ## Request Lifecycle
 
@@ -262,6 +263,50 @@ Express Error Handler Middleware
   "stack": "..." // dev only
 }
 ```
+
+## Cache & Session Architecture
+
+### Redis Connection Model
+
+```
+server.ts startup
+    ↓
+connectDB() called (MongoDB)
+    ├── Mongoose.connect(DATABASE_URL)
+    └── Wait for connection
+    ↓
+initRedis() called (Redis)
+    ├── Redis.createClient(REDIS_URL)
+    ├── Set cache helpers (setCache, getCache, deleteCache)
+    └── TTL support enabled
+    ↓
+Express server starts listening
+    ├── Can use Redis for: session storage, OTP caching, rate limits, auth tokens
+    └── ... request processing ...
+    ↓
+Process termination (SIGTERM/SIGINT)
+    ↓
+configureGracefulShutdown()
+    ├── Close HTTP server
+    ├── Close MongoDB connection
+    ├── Close Redis connection
+    └── Exit process (code 0)
+```
+
+### Cache Helper Functions
+
+| Function                    | Purpose                       | Returns              |
+| --------------------------- | ----------------------------- | -------------------- |
+| `setCache(key, value, ttl)` | Store value with optional TTL | Promise\<void\>      |
+| `getCache(key)`             | Retrieve cached value         | Promise\<T \| null\> |
+| `deleteCache(key)`          | Remove cache entry            | Promise\<void\>      |
+
+**Usage in Services**:
+
+- OTP storage with 5-10 min TTL
+- Session tokens with 24h TTL
+- Email template cache with 1h TTL
+- Rate limit counters with 1min TTL
 
 ## Database Architecture
 
@@ -482,13 +527,18 @@ Signal Handler Triggered
     ├── Flush pending operations
     └── Release connection pool
     ↓
-4. Exit Process
+4. Close Redis Connection (if initialized)
+    redisClient.disconnect()
+    ├── Flush pending cache operations
+    └── Release Redis connection
+    ↓
+5. Exit Process
     process.exit(0)
     └── Code 0 = success
 
     ↓ OR (timeout after 10s) ↓
 
-4b. Force Exit
+5b. Force Exit
     process.exit(1)
     └── Code 1 = error
 ```
@@ -522,12 +572,15 @@ Generate Swagger spec:
 app.ts (Express setup)
 ├── routes/index.ts
 │   ├── modules/health/health.routes.ts
-│   │   └── modules/health/health.controller.ts
-│   │       ├── shared/utils/api-response.ts
-│   │       ├── shared/utils/async-handler.ts
-│   │       └── shared/constants/status-codes.ts
+│   ├── modules/oauth/oauth.routes.ts (OAuth)
+│   │   └── modules/oauth/oauth.controller.ts
+│   │       └── modules/oauth/oauth.service.ts
+│   ├── modules/auth/auth.routes.ts
+│   │   └── modules/auth/auth.controller.ts
 │   └── (other features...)
 ├── shared/configs/swagger.ts
+├── shared/configs/passport.ts (OAuth)
+│   └── modules/oauth/oauth.controller.ts
 ├── shared/middlewares/error-handler.ts
 │   ├── shared/errors/api-error.ts
 │   ├── shared/utils/api-response.ts
@@ -538,9 +591,12 @@ app.ts (Express setup)
 
 server.ts (Entry point)
 ├── app.ts (see above)
-├── db/db.ts
+├── db/db.ts (MongoDB)
 │   └── shared/utils/logger.ts
 ├── shared/configs/env.ts
+├── shared/configs/redis.ts (NEW - Redis)
+├── shared/utils/render-template.ts (NEW - EJS)
+│   └── src/templates/*.ejs
 └── shared/utils/shutdown.ts
     └── shared/utils/logger.ts
 ```

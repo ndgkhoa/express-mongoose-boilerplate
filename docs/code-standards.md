@@ -1,7 +1,7 @@
 # Code Standards & Conventions
 
-**Project**: servercn-mongoose-starter v1.0.0  
-**Last Updated**: 2026-04-04  
+**Project**: servercn-mongoose-starter v1.1.0  
+**Last Updated**: 2026-04-07  
 **Applies To**: All TypeScript code in `src/` directory
 
 ## Core Principles
@@ -16,40 +16,55 @@
 
 ```
 src/
-├── app.ts                    # Express app setup (middleware, routes, error handlers)
-├── server.ts                 # Entry point (DB connect, server start, graceful shutdown)
+├── app.ts                           # Express app setup (middleware, routes, error handlers)
+├── server.ts                        # Entry point (DB/Redis connect, server start, graceful shutdown)
 ├── routes/
-│   └── index.ts             # Route aggregator for /api/v1
+│   └── index.ts                    # Route aggregator
 ├── db/
-│   └── db.ts                # Mongoose connection & initialization
-├── modules/                  # Feature-based modules
+│   └── db.ts                       # Mongoose connection & initialization
+├── modules/                         # Feature-based modules
 │   ├── auth/
-│   │   └── auth.controller.ts     # Auth placeholder [NEW]
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   └── auth.routes.ts
+│   ├── oauth/                       # OAuth module [NEW]
+│   │   ├── oauth.controller.ts
+│   │   ├── oauth.service.ts
+│   │   └── oauth.routes.ts
+│   ├── otp/                         # OTP module
+│   │   ├── otp.service.ts
+│   │   └── otp.model.ts
 │   ├── health/
-│   │   ├── health.routes.ts       # Route definitions
-│   │   └── health.controller.ts   # Request handlers
+│   │   ├── health.routes.ts
+│   │   └── health.controller.ts
 │   └── user/
 │       ├── user.routes.ts
 │       ├── user.controller.ts
-│       ├── user.model.ts          # Mongoose schema + interface
-│       └── user.service.ts        # Business logic (optional)
-└── shared/                   # Shared utilities & middleware
+│       ├── user.model.ts
+│       └── user.service.ts
+├── templates/                       # Email templates [NEW]
+│   └── signin-otp.ejs
+└── shared/                          # Shared utilities & middleware
     ├── configs/
-    │   ├── env.ts            # Environment validation (Zod)
-    │   └── swagger.ts        # Swagger UI setup
+    │   ├── env.ts                  # Environment validation (Zod)
+    │   ├── passport.ts             # Passport OAuth config [NEW]
+    │   ├── redis.ts                # Redis client & helpers [NEW]
+    │   └── swagger.ts              # Swagger UI setup
     ├── errors/
-    │   └── api-error.ts      # ApiError class
+    │   └── api-error.ts            # ApiError class
     ├── middlewares/
-    │   ├── error-handler.ts  # Global error handler
+    │   ├── error-handler.ts        # Global error handler
     │   ├── not-found-handler.ts
-    │   └── security-header.ts # Security headers (Helmet + CORS) [NEW]
+    │   └── security-header.ts      # Security headers (Helmet + CORS)
     ├── constants/
-    │   └── status-codes.ts   # HTTP status codes
+    │   └── status-codes.ts         # HTTP status codes
     └── utils/
-        ├── api-response.ts   # ApiResponse class
-        ├── async-handler.ts  # Async route wrapper
-        ├── logger.ts         # Pino logger singleton
-        └── shutdown.ts       # Graceful shutdown
+        ├── api-response.ts         # ApiResponse class
+        ├── async-handler.ts        # Async route wrapper
+        ├── logger.ts               # Pino logger singleton
+        ├── render-template.ts      # EJS template rendering [NEW]
+        ├── send-mail.ts            # Email service
+        └── shutdown.ts             # Graceful shutdown
 ```
 
 ### File Naming Conventions
@@ -67,7 +82,7 @@ src/
 
 ## Module Architecture Pattern
 
-Each feature module follows this structure:
+### Standard Feature Module (4-5 files)
 
 ```
 modules/user/
@@ -75,6 +90,21 @@ modules/user/
 ├── user.controller.ts  # Request handlers (wrapped in AsyncHandler)
 ├── user.model.ts       # Mongoose schema + TypeScript interface
 └── user.service.ts     # Business logic (optional, for complex features)
+```
+
+### OAuth Module Pattern (5-6 files)
+
+```
+modules/oauth/
+├── oauth.routes.ts         # OAuth routes (Google, GitHub, etc.)
+├── oauth.controller.ts     # Passport callback handlers
+├── oauth.service.ts        # OAuth login logic (reuses auth.service.handleToken)
+│
+shared/configs/
+└── passport.ts             # Passport strategies (GoogleOAuth, etc.)
+
+src/templates/
+└── signin-otp.ejs          # Email templates for OTP
 ```
 
 ### Module File Responsibilities
@@ -335,6 +365,68 @@ export const createUser = AsyncHandler(async (req, res) => {
   const user = await User.create({ email, name, age });
   return ApiResponse.created(res, "User created", user);
 });
+```
+
+## Cache & Session Pattern
+
+Use Redis helpers for caching and session management:
+
+```typescript
+import { deleteCache, getCache, setCache } from "@/shared/configs/redis";
+
+// Store OTP with 10-minute TTL
+await setCache(`otp:${email}`, hashedOtp, 600);
+
+// Retrieve cached value
+const cachedOtp = await getCache(`otp:${email}`);
+
+// Delete cache entry (e.g., after verification)
+await deleteCache(`otp:${email}`);
+
+// Store session token with 24-hour TTL
+await setCache(`session:${userId}`, token, 86400);
+```
+
+**Cache Key Naming**: Use `feature:identifier` format for clarity.
+
+## Email Template Pattern
+
+Use EJS templates for dynamic email content:
+
+```typescript
+import { renderTemplate } from "@/shared/utils/render-template";
+import { sendEmail } from "@/shared/utils/send-mail";
+
+// Render template with data
+const html = await renderTemplate("signin-otp", { name, code });
+
+// Send email
+await sendEmail({
+  to: email,
+  subject: "Your OTP Code",
+  html
+});
+```
+
+**Template Location**: `src/templates/{name}.ejs`
+
+## OAuth Service Pattern
+
+Reuse auth service `handleToken()` in OAuth flows:
+
+```typescript
+import { handleToken } from "@/modules/auth/auth.service";
+
+export const handleOAuthLogin = async profile => {
+  // Find or create user from OAuth profile
+  const user = await User.findOne({ email: profile.email });
+
+  // Reuse auth service token generation
+  const { accessToken, refreshToken } = await handleToken(user);
+
+  // Return tokens via cookies/response
+  return { user, accessToken, refreshToken };
+};
 ```
 
 ## Logger Usage

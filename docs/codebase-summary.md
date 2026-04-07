@@ -1,31 +1,47 @@
 # Codebase Summary
 
-**Project**: servercn-mongoose-starter v1.0.0  
-**Last Updated**: 2026-04-04  
-**Total Files**: 19 TypeScript source files  
-**Total LOC**: ~850 lines (src/)
+**Project**: servercn-mongoose-starter v1.1.0  
+**Last Updated**: 2026-04-07  
+**Total Files**: 26 TypeScript + EJS source files  
+**Total LOC**: ~1,200 lines (src/ + templates/)
 
 ## Directory Tree & Line Count
 
 ```
-src/                                                ~850 LOC
-├── server.ts                                      24 LOC
-├── app.ts                                         43 LOC
+src/                                                ~1,050 LOC
+├── server.ts                                      35 LOC (waits for DB + Redis)
+├── app.ts                                         50 LOC (includes Passport)
 ├── routes/
-│   └── index.ts                                   12 LOC
+│   └── index.ts                                   18 LOC (includes OAuth routes)
 ├── db/
-│   └── db.ts                                      20 LOC
+│   └── db.ts                                      25 LOC (with try-catch)
 ├── modules/
 │   ├── auth/
-│   │   └── auth.controller.ts                    17 LOC [NEW]
+│   │   ├── auth.controller.ts                    18 LOC
+│   │   ├── auth.service.ts                       60 LOC (handleToken exported)
+│   │   └── auth.routes.ts                        12 LOC
+│   ├── oauth/                                     [NEW]
+│   │   ├── oauth.controller.ts                   25 LOC (Google callback)
+│   │   ├── oauth.service.ts                      35 LOC (handleOAuthLogin)
+│   │   └── oauth.routes.ts                       12 LOC
+│   ├── otp/                                       [NEW]
+│   │   ├── otp.service.ts                        40 LOC (uses EJS template)
+│   │   └── otp.model.ts                          30 LOC
 │   ├── health/
 │   │   ├── health.controller.ts                  42 LOC
 │   │   └── health.routes.ts                      10 LOC
 │   └── user/
-│       └── user.model.ts                         50 LOC
+│       ├── user.routes.ts                        15 LOC
+│       ├── user.controller.ts                    20 LOC
+│       ├── user.model.ts                         55 LOC
+│       └── user.service.ts                       25 LOC
+├── templates/                                    [NEW]
+│   └── signin-otp.ejs                            12 LOC
 └── shared/
     ├── configs/
-    │   ├── env.ts                                73 LOC
+    │   ├── env.ts                                95 LOC (new: REDIS_URL, GOOGLE_*)
+    │   ├── passport.ts                           20 LOC [NEW]
+    │   ├── redis.ts                              35 LOC [NEW]
     │   └── swagger.ts                            14 LOC
     ├── constants/
     │   └── status-codes.ts                       31 LOC
@@ -34,12 +50,14 @@ src/                                                ~850 LOC
     ├── middlewares/
     │   ├── error-handler.ts                      41 LOC
     │   ├── not-found-handler.ts                  10 LOC
-    │   └── security-header.ts                    27 LOC [NEW]
+    │   └── security-header.ts                    27 LOC
     └── utils/
         ├── api-response.ts                       70 LOC
         ├── async-handler.ts                      15 LOC
         ├── logger.ts                             45 LOC
-        └── shutdown.ts                           40 LOC
+        ├── render-template.ts                    20 LOC [NEW]
+        ├── send-mail.ts                          35 LOC (uses templates)
+        └── shutdown.ts                           50 LOC (includes Redis)
 ```
 
 ## Module Descriptions
@@ -126,16 +144,36 @@ Exports:
 
 ### Shared Configs
 
-**`src/shared/configs/env.ts`** (73 LOC)
+**`src/shared/configs/env.ts`** (95 LOC)
 
 Exports:
 
 - **`envSchema`** — Zod object for environment validation
   - **Current**: NODE_ENV, PORT, DATABASE_URL, CORS_ORIGIN, LOG_LEVEL
-  - **Future** (commented): JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, CRYPTO_SECRET, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_REDIRECT_URI
+  - **Phase 2**: REDIS_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
+  - **Future** (commented): JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, SMTP_HOST, etc.
 - **`Env`** — TypeScript type (inferred from Zod)
 - **`env`** — Frozen readonly object with validated values
 - **Validation**: Exits process if invalid (fail-fast)
+
+**`src/shared/configs/redis.ts`** (35 LOC) [NEW]
+
+Exports:
+
+- **`redisClient`** — Redis client singleton
+- **`setCache(key, value, ttl)`** — Store value with optional TTL (seconds)
+- **`getCache(key)`** — Retrieve cached value (generic type support)
+- **`deleteCache(key)`** — Remove cache entry
+- **Initialization**: Connects on server startup; disconnected on graceful shutdown
+
+**`src/shared/configs/passport.ts`** (20 LOC) [NEW]
+
+Exports:
+
+- **`googleOAuth`** — Passport Google OAuth 2.0 strategy
+  - Uses `env.GOOGLE_CLIENT_ID`, `env.GOOGLE_CLIENT_SECRET`, `env.GOOGLE_REDIRECT_URI`
+  - Callback: `modules/oauth/oauth.controller.googleOAuth`
+  - Profile: Extracts `id`, `email`, `name`, `picture`
 
 **`src/shared/configs/swagger.ts`** (14 LOC)
 
@@ -254,7 +292,27 @@ Exports:
   - Configuration: Level from `env.LOG_LEVEL`
   - Colors: Enabled in development, disabled in production
 
-**`src/shared/utils/shutdown.ts`** (40 LOC)
+**`src/shared/utils/render-template.ts`** (20 LOC) [NEW]
+
+Exports:
+
+- **`renderTemplate(templateName, data)`** — EJS template renderer
+  - Resolves template from `src/templates/{templateName}.ejs`
+  - Renders with provided data (variables, loops, conditionals)
+  - Returns Promise\<string\> (HTML)
+  - Usage: `renderTemplate("signin-otp", { name, code })`
+
+**`src/shared/utils/send-mail.ts`** (35 LOC) [UPDATED]
+
+Exports:
+
+- **`sendEmail(options)`** — Nodemailer email sender
+  - Parameters: `{ to, subject, html, templateName?, data? }`
+  - Uses `renderTemplate()` if `templateName` + `data` provided
+  - Renders dynamic emails via EJS
+  - Returns Promise\<void\>
+
+**`src/shared/utils/shutdown.ts`** (50 LOC) [UPDATED]
 
 Exports:
 
@@ -264,29 +322,39 @@ Exports:
     1. Log shutdown initiation
     2. Close HTTP server (stops accepting connections)
     3. Close MongoDB connection
-    4. Exit process (code 0)
+    4. Close Redis connection (if initialized)
+    5. Exit process (code 0)
   - Timeout: Force-exit after 10 seconds if not complete
   - Usage: Called in `server.ts` after server starts
 
 ## Key Exports Summary
 
-| Module                          | Primary Exports                      | Type                      |
-| ------------------------------- | ------------------------------------ | ------------------------- |
-| `api-error`                     | `ApiError`                           | Class                     |
-| `api-response`                  | `ApiResponse`                        | Class                     |
-| `async-handler`                 | `AsyncHandler`, `AsyncRouteHandler`  | Function, Type            |
-| `constants/status-codes`        | `STATUS_CODES`, `StatusCode`         | Object, Type              |
-| `configs/env`                   | `env`, `Env`, `envSchema`            | Object, Type, Zod schema  |
-| `configs/swagger`               | `setupSwagger()`                     | Function                  |
-| `middlewares/error-handler`     | `errorHandler()`                     | Function                  |
-| `middlewares/not-found-handler` | `notFoundHandler()`                  | Function                  |
-| `middlewares/security-header`   | `configureSecurityHeaders()`         | Function                  |
-| `logger`                        | `logger`                             | Singleton                 |
-| `shutdown`                      | `configureGracefulShutdown()`        | Function                  |
-| `modules/auth/controller`       | Auth controller (placeholder)        | Functions                 |
-| `modules/health/controller`     | `healthCheck`, `detailedHealthCheck` | Functions                 |
-| `modules/health/routes`         | `healthRouter`                       | Express Router            |
-| `modules/user/model`            | `User`, `IUser`                      | Mongoose Model, Interface |
+| Module                          | Primary Exports                                      | Type                      |
+| ------------------------------- | ---------------------------------------------------- | ------------------------- |
+| `api-error`                     | `ApiError`                                           | Class                     |
+| `api-response`                  | `ApiResponse`                                        | Class                     |
+| `async-handler`                 | `AsyncHandler`, `AsyncRouteHandler`                  | Function, Type            |
+| `constants/status-codes`        | `STATUS_CODES`, `StatusCode`                         | Object, Type              |
+| `configs/env`                   | `env`, `Env`, `envSchema`                            | Object, Type, Zod schema  |
+| `configs/redis`                 | `redisClient`, `setCache`, `getCache`, `deleteCache` | Singleton, Functions      |
+| `configs/passport`              | `googleOAuth`                                        | Passport Strategy         |
+| `configs/swagger`               | `setupSwagger()`                                     | Function                  |
+| `middlewares/error-handler`     | `errorHandler()`                                     | Function                  |
+| `middlewares/not-found-handler` | `notFoundHandler()`                                  | Function                  |
+| `middlewares/security-header`   | `configureSecurityHeaders()`                         | Function                  |
+| `utils/logger`                  | `logger`                                             | Singleton                 |
+| `utils/render-template`         | `renderTemplate()`                                   | Function                  |
+| `utils/send-mail`               | `sendEmail()`                                        | Function                  |
+| `utils/shutdown`                | `configureGracefulShutdown()`                        | Function                  |
+| `modules/auth/controller`       | Auth controller functions                            | Functions                 |
+| `modules/auth/service`          | `handleToken()` (exported for OAuth reuse)           | Function                  |
+| `modules/oauth/controller`      | `googleOAuth`                                        | Function                  |
+| `modules/oauth/service`         | `handleOAuthLogin()`                                 | Function                  |
+| `modules/otp/service`           | `sendOtp()`, `verifyOtp()`                           | Functions                 |
+| `modules/health/controller`     | `healthCheck`, `detailedHealthCheck`                 | Functions                 |
+| `modules/health/routes`         | `healthRouter`                                       | Express Router            |
+| `modules/user/model`            | `User`, `IUser`                                      | Mongoose Model, Interface |
+| `modules/user/service`          | User service functions                               | Functions                 |
 
 ## Dependency Graph
 
@@ -295,11 +363,12 @@ server.ts
   ├── app.ts
   │   ├── routes/index.ts
   │   │   ├── modules/health/health.routes.ts
-  │   │   │   └── modules/health/health.controller.ts
-  │   │   │       ├── shared/utils/api-response.ts
-  │   │   │       ├── shared/utils/async-handler.ts
-  │   │   │       └── shared/constants/status-codes.ts
+  │   │   ├── modules/oauth/oauth.routes.ts (NEW)
+  │   │   │   └── modules/oauth/oauth.controller.ts
+  │   │   ├── modules/auth/auth.routes.ts
+  │   │   │   └── modules/auth/auth.controller.ts
   │   │   └── (other feature routes)
+  │   ├── shared/configs/passport.ts (NEW)
   │   ├── shared/configs/swagger.ts
   │   ├── shared/middlewares/error-handler.ts
   │   │   ├── shared/errors/api-error.ts
@@ -308,7 +377,13 @@ server.ts
   │   └── shared/middlewares/not-found-handler.ts
   ├── db/db.ts
   ├── shared/configs/env.ts
-  └── shared/utils/shutdown.ts
+  ├── shared/configs/redis.ts (NEW)
+  ├── shared/utils/render-template.ts (NEW)
+  │   └── src/templates/signin-otp.ejs
+  ├── shared/utils/send-mail.ts (UPDATED)
+  │   └── shared/utils/render-template.ts
+  └── shared/utils/shutdown.ts (UPDATED)
+      ├── shared/configs/redis.ts
       └── shared/utils/logger.ts
 ```
 
@@ -339,17 +414,19 @@ HTTP Response
 
 ## Code Metrics
 
-| Metric             | Value                      |
-| ------------------ | -------------------------- |
-| Total Source Files | 19                         |
-| Total LOC (src/)   | ~850                       |
-| Largest File       | `api-response.ts` (70 LOC) |
-| Smallest File      | `routes/index.ts` (12 LOC) |
-| Average File Size  | ~45 LOC                    |
-| Modules            | 3 (auth, health, user)     |
-| Shared Utilities   | 4                          |
-| Shared Middlewares | 3                          |
-| Shared Configs     | 2                          |
+| Metric                | Value                                                                         |
+| --------------------- | ----------------------------------------------------------------------------- |
+| Total Source Files    | 26 (TS + EJS)                                                                 |
+| Total LOC (src/)      | ~1,050 (TypeScript)                                                           |
+| Total LOC (templates) | ~12 (EJS)                                                                     |
+| Largest File          | `auth.service.ts` (60 LOC)                                                    |
+| Smallest File         | `health.routes.ts` (10 LOC)                                                   |
+| Average File Size     | ~45 LOC                                                                       |
+| Modules               | 5 (auth, oauth, otp, health, user)                                            |
+| Shared Utilities      | 6 (logger, api-response, async-handler, render-template, send-mail, shutdown) |
+| Shared Middlewares    | 3                                                                             |
+| Shared Configs        | 4 (env, redis, passport, swagger)                                             |
+| Email Templates       | 1 (signin-otp.ejs)                                                            |
 
 ## TypeScript Configuration
 
