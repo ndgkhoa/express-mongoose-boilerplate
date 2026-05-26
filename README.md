@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/express/express.png" width="120" alt="Express Logo" />
+  <img src="https://expressjs.com/images/logos/logo-express-black.svg" width="200" alt="Express Logo" />
 </p>
-
-# Express Mongoose Boilerplate
 
 <p align="center">
   <a href="https://nodejs.org" target="_blank"><img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg" alt="Node Version" /></a>
@@ -140,4 +138,4 @@ src/
 
 ## License
 
-MIT
+[MIT](LICENSE)
