@@ -1,5 +1,5 @@
 {
-  "name": "servercn-mongoose-starter",
+  "name": "express-mongoose-boilerplate",
   "version": "1.0.0",
   "main": "dist/server.js",
   "type": "module",
