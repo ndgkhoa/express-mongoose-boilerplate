@@ -1,593 +1,741 @@
 # Code Standards & Conventions
 
-**Project**: servercn-mongoose-starter v1.1.0  
-**Last Updated**: 2026-04-07  
-**Applies To**: All TypeScript code in `src/` directory
+## File Naming
 
-## Core Principles
+### TypeScript/JavaScript Files
 
-**YAGNI** (You Aren't Gonna Need It) — Implement only required features, not speculative ones.  
-**KISS** (Keep It Simple, Stupid) — Prefer simple solutions over clever ones.  
-**DRY** (Don't Repeat Yourself) — Eliminate duplication through reusable modules.
+- **Convention:** kebab-case with descriptive names
+- **Pattern:** `{feature}-{type}.ts` (e.g., `auth.controller.ts`, `verify-auth.ts`)
+- **Goal:** Self-documenting names for tooling (Grep, Glob, LSP)
 
-## File Organization
-
-### Directory Structure
+**Examples:**
 
 ```
-src/
-├── app.ts                           # Express app setup (middleware, routes, error handlers)
-├── server.ts                        # Entry point (DB/Redis connect, server start, graceful shutdown)
-├── routes/
-│   └── index.ts                    # Route aggregator
-├── db/
-│   └── db.ts                       # Mongoose connection & initialization
-├── modules/                         # Feature-based modules
-│   ├── auth/
-│   │   ├── auth.controller.ts
-│   │   ├── auth.service.ts
-│   │   └── auth.routes.ts
-│   ├── oauth/                       # OAuth module [NEW]
-│   │   ├── oauth.controller.ts
-│   │   ├── oauth.service.ts
-│   │   └── oauth.routes.ts
-│   ├── otp/                         # OTP module
-│   │   ├── otp.service.ts
-│   │   └── otp.model.ts
-│   ├── health/
-│   │   ├── health.routes.ts
-│   │   └── health.controller.ts
-│   └── user/
-│       ├── user.routes.ts
-│       ├── user.controller.ts
-│       ├── user.model.ts
-│       └── user.service.ts
-├── templates/                       # Email templates [NEW]
-│   └── signin-otp.ejs
-└── shared/                          # Shared utilities & middleware
-    ├── configs/
-    │   ├── env.ts                  # Environment validation (Zod)
-    │   ├── passport.ts             # Passport OAuth config [NEW]
-    │   ├── redis.ts                # Redis client & helpers [NEW]
-    │   └── swagger.ts              # Swagger UI setup
-    ├── errors/
-    │   └── api-error.ts            # ApiError class
-    ├── middlewares/
-    │   ├── error-handler.ts        # Global error handler
-    │   ├── not-found-handler.ts
-    │   └── security-header.ts      # Security headers (Helmet + CORS)
-    ├── constants/
-    │   └── status-codes.ts         # HTTP status codes
-    └── utils/
-        ├── api-response.ts         # ApiResponse class
-        ├── async-handler.ts        # Async route wrapper
-        ├── logger.ts               # Pino logger singleton
-        ├── render-template.ts      # EJS template rendering [NEW]
-        ├── send-mail.ts            # Email service
-        └── shutdown.ts             # Graceful shutdown
+auth.service.ts           (service)
+auth.controller.ts        (controller)
+auth.routes.ts            (routes)
+auth.validator.ts         (validation schemas)
+verify-auth.ts            (middleware)
+rate-limiter.ts           (middleware)
+refresh-token.model.ts    (model)
+user-account-restriction.ts (middleware)
+token.helper.ts           (helper utility)
 ```
 
-### File Naming Conventions
-
-| Type             | Case                       | Pattern               | Example                                   |
-| ---------------- | -------------------------- | --------------------- | ----------------------------------------- |
-| TypeScript files | kebab-case                 | `{feature}.{type}.ts` | `user.controller.ts`, `health.routes.ts`  |
-| Classes          | PascalCase                 | `ClassName`           | `ApiError`, `ApiResponse`, `AsyncHandler` |
-| Functions        | camelCase                  | `functionName()`      | `healthCheck()`, `errorHandler()`         |
-| Constants        | UPPER_SNAKE_CASE           | `CONSTANT_NAME`       | `STATUS_CODES`, `API_BASE_PATH`           |
-| Interfaces       | PascalCase with `I` prefix | `IInterfaceName`      | `IUser`, `IHealthData`                    |
-| Types            | PascalCase                 | `TypeName`            | `StatusCode`, `ApiResponseParams`         |
-| Variables        | camelCase                  | `variableName`        | `userId`, `statusCode`                    |
-| Directories      | kebab-case                 | `{feature-name}`      | `health/`, `user/`, `shared/`             |
-
-## Module Architecture Pattern
-
-### Standard Feature Module (4-5 files)
+**Avoid:**
 
 ```
-modules/user/
-├── user.routes.ts      # Express Router with route definitions
-├── user.controller.ts  # Request handlers (wrapped in AsyncHandler)
-├── user.model.ts       # Mongoose schema + TypeScript interface
-└── user.service.ts     # Business logic (optional, for complex features)
+Auth.ts                   (too generic)
+authService.ts            (camelCase not preferred)
+auth_service.ts           (snake_case)
 ```
 
-### OAuth Module Pattern (5-6 files)
+### Configuration Files
+
+- `*.config.ts` or `*.config.json` suffix
+- Examples: `swagger.config.ts`, `tsconfig.json`, `commitlint.config.ts`
+
+### Model Files
+
+- Suffix: `.model.ts`
+- Examples: `user.model.ts`, `refresh-token.model.ts`
+
+## Directory Structure
+
+### Feature-Based Organization
 
 ```
-modules/oauth/
-├── oauth.routes.ts         # OAuth routes (Google, GitHub, etc.)
-├── oauth.controller.ts     # Passport callback handlers
-├── oauth.service.ts        # OAuth login logic (reuses auth.service.handleToken)
-│
-shared/configs/
-└── passport.ts             # Passport strategies (GoogleOAuth, etc.)
-
-src/templates/
-└── signin-otp.ejs          # Email templates for OTP
+modules/
+├── auth/
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   ├── auth.routes.ts
+│   ├── auth.validator.ts
+│   └── refresh-token.model.ts
+├── user/
+│   ├── user.model.ts
+│   └── user.routes.ts
+└── oauth/
+    ├── oauth.service.ts
+    ├── oauth.controller.ts
+    └── oauth.routes.ts
 ```
 
-### Module File Responsibilities
+**Rationale:** Modules are self-contained, easy to locate and maintain, scales well as features grow.
 
-**`{feature}.routes.ts`** — Route definitions only
+### Shared Directory
+
+```
+shared/
+├── configs/         (external service configuration)
+├── constants/       (static values, enum constants)
+├── errors/          (error classes)
+├── helpers/         (pure utility functions)
+├── jobs/            (background job definitions)
+├── middlewares/     (Express middleware functions)
+└── utils/           (general-purpose utilities)
+```
+
+## Module Structure Pattern
+
+Every feature module follows this structure:
+
+```
+module/
+├── {feature}.controller.ts  # Request handlers
+├── {feature}.service.ts     # Business logic
+├── {feature}.routes.ts      # Route definitions
+├── {feature}.validator.ts   # Zod validation schemas (if needed)
+└── {feature}.model.ts       # Mongoose models (if needed)
+```
+
+### controller.ts
 
 ```typescript
-import express from "express";
+// Responsibilities:
+// - Extract request data
+// - Call service methods
+// - Format and send responses
+// - No business logic
 
-import { userController } from "./user.controller";
+export const register = asyncHandler(async (req, res) => {
+  const user = await registerUser(req.body);
+  ApiResponse.created(res, "User registered", user);
+});
+```
 
-const router = express.Router();
-router.get("/:id", userController.getUser);
-router.post("/", userController.createUser);
+### service.ts
+
+```typescript
+// Responsibilities:
+// - All business logic
+// - Database operations
+// - External service calls
+// - Data transformations
+// - Error throwing (ApiError)
+
+export const registerUser = async data => {
+  const existing = await User.findOne({ email: data.email });
+  if (existing) throw ApiError.conflict("Email exists");
+  return User.create(data);
+};
+```
+
+### routes.ts
+
+```typescript
+// Responsibilities:
+// - Define endpoints
+// - Attach middlewares
+// - Validate request bodies with validateRequest
+
+const router = Router();
+
+router.post("/register", validateRequest(signupSchema), asyncHandler(register));
+
 export default router;
 ```
 
-**`{feature}.controller.ts`** — Request handlers wrapped with AsyncHandler
+### validator.ts
 
 ```typescript
-import { ApiResponse } from "@/shared/utils/api-response";
-import { AsyncHandler } from "@/shared/utils/async-handler";
+// Zod schemas only
+// One schema per operation
 
-export const userController = {
-  getUser: AsyncHandler(async (req, res) => {
-    // Validation, business logic, response
-    return ApiResponse.ok(res, "User found", user);
-  })
-};
+export const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(2)
+});
 ```
 
-**`{feature}.model.ts`** — Mongoose schema + TypeScript interface
+### model.ts
 
 ```typescript
-import { Document, Schema, model } from "mongoose";
+// Mongoose schema definition
+// Interface definition
+// Model export
 
 export interface IUser extends Document {
-  email: string;
   name: string;
-  createdAt: Date;
+  email: string;
+  // ...
 }
 
 const userSchema = new Schema<IUser>({
-  email: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
+  name: String
+  // ...
 });
 
-export const User = model<IUser>("User", userSchema);
-```
-
-**`{feature}.service.ts`** — Business logic (if controller gets too complex)
-
-```typescript
-export const userService = {
-  async getUserById(id: string) {
-    return User.findById(id);
-  },
-  async createUser(data: Partial<IUser>) {
-    return User.create(data);
-  }
-};
-```
-
-## TypeScript Configuration
-
-### Strict Mode (Mandatory)
-
-All strict mode flags are enabled in `tsconfig.json`:
-
-```json
-{
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "useUnknownInCatchVariables": true,
-    "alwaysStrict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
-  }
-}
-```
-
-### Type Annotations Required
-
-Always provide explicit type annotations:
-
-```typescript
-// ✅ Good
-export function parsePort(port: string): number {
-  return parseInt(port, 10);
-}
-
-const user: IUser = { email: "test@test.com", name: "Test" };
-const ids: string[] = [];
-
-// ❌ Avoid
-export function parsePort(port) {
-  // Missing parameter type
-  return parseInt(port, 10);
-}
-
-const user = { email: "test@test.com" }; // Missing interface
-```
-
-### Path Aliases (STANDARD)
-
-**All imports MUST use `@/*` path aliases.** Relative imports are not permitted.
-
-The `@/` prefix resolves to `src/` directory, improving readability and avoiding fragile relative paths.
-
-```typescript
-// ✅ Good (required)
-import { ApiError } from "@/shared/errors/api-error";
-import { logger } from "@/shared/utils/logger";
-import { AsyncHandler } from "@/shared/utils/async-handler";
-
-// ❌ Never use relative imports
-import { ApiError } from "../../shared/errors/api-error";
-import { logger } from "../utils/logger";
-```
-
-**Benefits**:
-
-- Clarity: Absolute paths immediately show where imports come from
-- Maintainability: Moving files doesn't break relative imports
-- Consistency: Single convention across entire codebase
-- IDE support: Better autocomplete and go-to-definition
-
-## Error Handling Pattern
-
-### Using ApiError
-
-All domain errors must be instances of `ApiError` with appropriate status codes:
-
-```typescript
-// ✅ Good
-export const getUser = AsyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const user = await User.findById(id);
-  if (!user) {
-    throw ApiError.notFound("User not found");
-  }
-
-  return ApiResponse.ok(res, "User found", user);
-});
-
-// ❌ Avoid
-throw new Error("User not found"); // Not an ApiError
-throw ApiError.server("Invalid user"); // Wrong status code
-```
-
-### ApiError Factory Methods
-
-```typescript
-ApiError.badRequest(message, errors?)      // 400
-ApiError.unauthorized(message)              // 401
-ApiError.forbidden(message)                 // 403
-ApiError.notFound(message)                  // 404
-ApiError.conflict(message)                  // 409
-ApiError.validation(message, errors?)       // 400
-ApiError.notImplemented(message)            // 501
-ApiError.badGateway(message)                // 502
-ApiError.serviceUnavailable(message)        // 503
-ApiError.tooManyRequests(message)           // 429
-ApiError.server(message)                    // 500
-```
-
-## Response Format Standard
-
-All endpoints must return consistent JSON via `ApiResponse`:
-
-```json
-{
-  "success": true,
-  "message": "User found",
-  "statusCode": 200,
-  "data": { "id": "123", "email": "test@test.com" }
-}
-```
-
-Error response:
-
-```json
-{
-  "success": false,
-  "message": "User not found",
-  "statusCode": 404,
-  "errors": null
-}
-```
-
-Usage in controllers:
-
-```typescript
-// Success with data
-return ApiResponse.Success(res, "User created", user, 201);
-
-// Success without data
-return ApiResponse.ok(res, "Deleted successfully");
-
-// Created (201)
-return ApiResponse.created(res, "User registered", user);
-
-// Errors (throw ApiError)
-throw ApiError.badRequest("Invalid email");
-```
-
-## Async Route Handler Pattern
-
-All async route handlers must be wrapped with `AsyncHandler`:
-
-```typescript
-// ✅ Good — AsyncHandler catches Promise rejections
-export const getUser = AsyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
-  if (!user) throw ApiError.notFound("User not found");
-  return ApiResponse.ok(res, "User found", user);
-});
-
-// ❌ Avoid — Unhandled rejection if Database fails
-export const getUser = (req: Request, res: Response) => {
-  User.findById(req.params.id).then(user => {
-    res.json(user);
-  });
-};
-```
-
-## Validation Pattern
-
-Use Zod for runtime schema validation:
-
-```typescript
-import { z } from "zod";
-
-const createUserSchema = z.object({
-  email: z.string().email("Invalid email"),
-  name: z.string().min(1, "Name required"),
-  age: z.number().positive().optional()
-});
-
-export const createUser = AsyncHandler(async (req, res) => {
-  // Validate request body
-  const parsed = createUserSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw ApiError.badRequest("Validation failed", parsed.error.flatten());
-  }
-
-  const { email, name, age } = parsed.data;
-  const user = await User.create({ email, name, age });
-  return ApiResponse.created(res, "User created", user);
-});
-```
-
-## Cache & Session Pattern
-
-Use Redis helpers for caching and session management:
-
-```typescript
-import { deleteCache, getCache, setCache } from "@/shared/configs/redis";
-
-// Store OTP with 10-minute TTL
-await setCache(`otp:${email}`, hashedOtp, 600);
-
-// Retrieve cached value
-const cachedOtp = await getCache(`otp:${email}`);
-
-// Delete cache entry (e.g., after verification)
-await deleteCache(`otp:${email}`);
-
-// Store session token with 24-hour TTL
-await setCache(`session:${userId}`, token, 86400);
-```
-
-**Cache Key Naming**: Use `feature:identifier` format for clarity.
-
-## Email Template Pattern
-
-Use EJS templates for dynamic email content:
-
-```typescript
-import { renderTemplate } from "@/shared/utils/render-template";
-import { sendEmail } from "@/shared/utils/send-mail";
-
-// Render template with data
-const html = await renderTemplate("signin-otp", { name, code });
-
-// Send email
-await sendEmail({
-  to: email,
-  subject: "Your OTP Code",
-  html
-});
-```
-
-**Template Location**: `src/templates/{name}.ejs`
-
-## OAuth Service Pattern
-
-Reuse auth service `handleToken()` in OAuth flows:
-
-```typescript
-import { handleToken } from "@/modules/auth/auth.service";
-
-export const handleOAuthLogin = async profile => {
-  // Find or create user from OAuth profile
-  const user = await User.findOne({ email: profile.email });
-
-  // Reuse auth service token generation
-  const { accessToken, refreshToken } = await handleToken(user);
-
-  // Return tokens via cookies/response
-  return { user, accessToken, refreshToken };
-};
-```
-
-## Logger Usage
-
-Use Pino logger for structured logging:
-
-```typescript
-import { logger } from "@/shared/utils/logger";
-
-// Info level (normal operations)
-logger.info("User created", { userId: user.id });
-
-// Debug level (troubleshooting)
-logger.debug("Database query", { query: queryObject });
-
-// Warn level (recoverable issues)
-logger.warn("Slow query detected", { duration: 250 });
-
-// Error level (handled errors)
-logger.error(error, "Failed to create user");
-
-// Fatal level (process should exit)
-logger.fatal(error, "Database connection failed");
+export default mongoose.model<IUser>("User", userSchema);
 ```
 
 ## Middleware Pattern
 
-Express middleware follows standard signature. Security middlewares MUST be applied first:
-
 ```typescript
-// ✅ Good — Applied in app.ts FIRST
-export const configureSecurityHeaders = (app: Express) => {
-  app.use(helmet());
-  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
-  app.use((_req, res, next) => {
-    res.setHeader("X-Content-Type-Options", "nosniff");
+// middleware/verify-auth.ts
+import { NextFunction, Request, Response } from "express";
+
+export const verifyAuth = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = extractToken(req);
+    const decoded = verifyAccessToken(token);
+    req.user = { _id: decoded.userId, role: decoded.role };
     next();
-  });
+  } catch (err) {
+    throw ApiError.unauthorized("Invalid token");
+  }
 };
 
-// ✅ Custom middleware
-export function customMiddleware(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
-  // Middleware logic
-  next();
-}
-
-// Apply to routes
-app.use("/api", customMiddleware);
-app.get("/health", customMiddleware, handler);
+// Routes
+router.get("/profile", verifyAuth, getProfile);
 ```
 
-## Git & Commit Standards
+## Error Handling Pattern
 
-### Conventional Commits (Enforced by commitlint)
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-| Type       | Scope          | Example                                     |
-| ---------- | -------------- | ------------------------------------------- |
-| `feat`     | Feature name   | `feat(user): add JWT authentication`        |
-| `fix`      | Component/area | `fix(health): incorrect uptime calculation` |
-| `docs`     | Document path  | `docs: update API endpoints in README`      |
-| `refactor` | Module name    | `refactor(user): extract validation logic`  |
-| `test`     | Feature name   | `test(user): add registration tests`        |
-| `chore`    | Tooling        | `chore(deps): upgrade Express to 5.2.1`     |
-
-### Commit Best Practices
-
-- One logical change per commit
-- Write in imperative mood: "add feature" not "added feature"
-- Reference issue/PR numbers in footer: `Closes #123`
-- No AI references in messages
-- Run linting & tests before committing (enforced by husky)
-
-## Code Review Checklist
-
-Before committing, verify:
-
-- [ ] TypeScript strict mode passes (`pnpm typecheck`)
-- [ ] ESLint passes without warnings (`pnpm lint:check`)
-- [ ] Prettier formatting applied (`pnpm format:fix`)
-- [ ] All async handlers wrapped with `AsyncHandler`
-- [ ] All errors are `ApiError` instances with correct status codes
-- [ ] All responses use `ApiResponse` class
-- [ ] Environment variables validated in `env.ts`
-- [ ] Database operations use Mongoose models
-- [ ] Input validation with Zod schemas
-- [ ] No console.log (use logger instead)
-- [ ] No `any` types (use proper TypeScript types)
-- [ ] No unused imports or variables
-- [ ] Comments explain "why", not "what"
-
-## Performance Guidelines
-
-| Concern               | Standard  | Enforcement          |
-| --------------------- | --------- | -------------------- |
-| Function length       | <50 lines | Code review          |
-| File size             | <200 LOC  | Code review          |
-| Cyclomatic complexity | <10       | Code review          |
-| API response time     | <100ms    | Performance testing  |
-| Server startup        | <5s       | Performance baseline |
-| Bundle size           | <5MB      | Build output check   |
-
-## Common Patterns & Examples
-
-### Creating a New Feature Module
-
-1. Create directory: `src/modules/{feature}/`
-2. Create files: `{feature}.routes.ts`, `{feature}.controller.ts`, `{feature}.model.ts`
-3. Register in `src/routes/index.ts`
-4. Document in API spec via Swagger comments
-
-### Error Handling Example
+### Throwing Errors
 
 ```typescript
-export const updateUser = AsyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const updateSchema = z.object({ email: z.string().email() });
+// Use ApiError static factory methods
+if (!user) throw ApiError.notFound("User not found");
+if (locked) throw ApiError.forbidden("Account locked");
+if (exists) throw ApiError.conflict("Email exists");
 
-  const parsed = updateSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw ApiError.badRequest("Invalid input", parsed.error);
+// For validation (Zod errors auto-caught)
+throw ApiError.validation("Invalid input", zodError.errors);
+```
+
+### Catching Errors
+
+```typescript
+// Global handler catches all ApiError instances
+// Non-operational errors logged and return 500
+// Operational errors (isOperational: true) returned with statusCode
+```
+
+### Response Format
+
+```typescript
+// Success
+{ success: true, message: "OK", statusCode: 200, data: {...} }
+
+// Error
+{ success: false, message: "Not found", statusCode: 404 }
+
+// Validation error
+{ success: false, message: "Validation failed", statusCode: 400, errors: [...] }
+```
+
+## Validation Pattern
+
+### Using Zod
+
+```typescript
+// Define schema
+const loginSchema = z.object({
+  email: z.string().email("Invalid email"),
+  password: z.string().min(8, "Password too short")
+});
+
+// In controller (via middleware)
+router.post(
+  "/login",
+  validateRequest(loginSchema), // Auto-validates, passes data to next
+  controller
+);
+
+// In service (if additional validation needed)
+export const login = async (data: z.infer<typeof loginSchema>) => {
+  // data is already typed and validated
+};
+```
+
+### Validation Middleware
+
+```typescript
+// middleware/validate-request.ts
+export const validateRequest =
+  (schema: ZodSchema) => (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validated = schema.parse(req.body);
+      req.body = validated;
+      next();
+    } catch (err) {
+      throw ApiError.validation("Invalid input", err.errors);
+    }
+  };
+```
+
+## Async/Await Pattern
+
+### Async Handler Wrapper
+
+```typescript
+// All route handlers must use asyncHandler
+// Catches unhandled promise rejections
+
+const handler = asyncHandler(async (req, res) => {
+  const data = await someAsync();
+  ApiResponse.ok(res, "OK", data);
+});
+
+// asyncHandler implementation
+export const asyncHandler =
+  (fn: HandlerFunction) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+```
+
+### Try-Catch in Services
+
+```typescript
+// Always try-catch in services for manual cleanup
+export const loginUser = async (email: string, password: string) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const user = await User.findOne({ email }).session(session);
+    // ... business logic ...
+    await session.commitTransaction();
+    return result;
+  } catch (err) {
+    await session.abortTransaction();
+    throw err; // Let controller/global handler deal with it
   }
+};
+```
 
-  const user = await User.findByIdAndUpdate(id, parsed.data, { new: true });
-  if (!user) {
-    throw ApiError.notFound("User not found");
+## API Response Pattern
+
+```typescript
+// Success responses
+ApiResponse.ok(res, "User found", user); // 200
+ApiResponse.created(res, "User created", user); // 201
+
+// Error responses (thrown, caught by global handler)
+throw ApiError.badRequest("Invalid input"); // 400
+throw ApiError.unauthorized("Token expired"); // 401
+throw ApiError.forbidden("Not allowed"); // 403
+throw ApiError.notFound("User not found"); // 404
+throw ApiError.conflict("Email exists"); // 409
+throw ApiError.tooManyRequests("Rate limited"); // 429
+throw ApiError.server("Internal error"); // 500
+```
+
+## Type Safety
+
+### Strict TypeScript Mode
+
+```typescript
+// tsconfig.json enables strict mode:
+// - noImplicitAny: true
+// - strictNullChecks: true
+// - strictFunctionTypes: true
+// - noImplicitThis: true
+// - noUnusedLocals: true
+// - noUnusedParameters: true
+// - noImplicitReturns: true
+
+// No any types allowed
+const data = req.body;  // ERROR: Must be typed
+
+// Use type inference
+const user = await User.findById(id);  // user: IUser | null (inferred)
+
+// Or explicit types
+const user: IUser | null = await User.findById(id);
+```
+
+### Function Signatures
+
+```typescript
+// Always type parameters and return values
+export const hashPassword = async (password: string): Promise<string> => {
+  return argon2.hash(password);
+};
+
+// For async handlers
+export const getUser = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const user = await User.findById(req.user?._id);
+    ApiResponse.ok(res, "User found", user);
   }
+);
+```
 
-  logger.info("User updated", { userId: user.id });
-  return ApiResponse.ok(res, "User updated", user);
+### Generic Functions
+
+```typescript
+// Use generics for flexible utilities
+export class ApiResponse<T = unknown> {
+  public readonly data?: T | null;
+
+  static ok<T>(res: Response, message: string, data?: T) {
+    return new ApiResponse<T>({ success: true, message, data }).send(res);
+  }
+}
+```
+
+## Import Organization
+
+### Path Alias
+
+```typescript
+// Use @/ alias for all absolute imports
+// Configured in tsconfig.json: "@/*": ["./src/*"]
+
+// ✓ Good
+import env from "@/shared/configs/env";
+import User from "@/modules/user/user.model";
+import { ApiError } from "@/shared/errors/api-error";
+
+// ✗ Avoid
+import env from "../../shared/configs/env";
+import User from "../user/user.model";
+```
+
+### Import Order
+
+```typescript
+// 1. External packages
+import express, { Router } from "express";
+import mongoose from "mongoose";
+
+// 2. Internal modules/shared
+import env from "@/shared/configs/env";
+import { ApiError } from "@/shared/errors/api-error";
+
+import User from "@/modules/user/user.model";
+// 3. Types/interfaces
+import type { IUser } from "@/modules/user/user.model";
+
+// 4. Constants/enums
+import { UserRoleConst } from "@/types/enums";
+```
+
+**Tooling:** Prettier plugin `@trivago/prettier-plugin-sort-imports` auto-sorts imports.
+
+## Code Style & Formatting
+
+### ESLint & Prettier
+
+```json
+// .eslintrc / .prettierrc auto-applied via husky pre-commit hooks
+// Rules:
+// - No unused variables
+// - No implicit any
+// - 2-space indentation
+// - Single quotes
+// - No semicolons (Prettier removes them)
+// - Max line length 100
+```
+
+### Variable Naming
+
+```typescript
+// Descriptive, camelCase
+const authToken = req.headers.authorization; // ✓
+const t = req.headers.authorization; // ✗
+
+// Boolean variables start with is/has
+const isAuthenticated = !!token; // ✓
+const authenticated = !!token; // ✗
+
+// Avoid acronyms unless clear
+const userData = user; // ✓
+const usr = user; // ✗
+```
+
+### Comments
+
+```typescript
+// Use comments sparingly (code should be self-documenting)
+
+// ✓ Comment why, not what
+// Account locked after 5 failed attempts for 15 minutes
+if (user.lockUntil && user.lockUntil > new Date()) {
+  throw ApiError.forbidden("Account locked");
+}
+
+// ✗ Obvious comments
+// Check if lockUntil exists and is in future
+if (user.lockUntil && user.lockUntil > new Date()) {
+```
+
+## Environment Configuration
+
+### Loading & Validation
+
+```typescript
+// configs/env.ts validates all required vars at startup
+import { z } from "zod";
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "production"]),
+  PORT: z.coerce.number().default(3000),
+  DATABASE_URL: z.string().url(),
+  JWT_ACCESS_SECRET: z.string().min(32)
+  // ...
+});
+
+const env = envSchema.parse(process.env);
+export default env;
+```
+
+### Usage Pattern
+
+```typescript
+// Import env from shared config
+import env from "@/shared/configs/env";
+
+// Access directly
+const port = env.PORT;
+const isDev = env.NODE_ENV === "development";
+
+// Never access process.env directly elsewhere
+// process.env.SOME_VAR;  // ✗ Avoid
+```
+
+### Environment File Format
+
+```bash
+# .env (or .env.local, .env.development)
+NODE_ENV=development
+PORT=3000
+DATABASE_URL=mongodb://localhost:27017/dbname
+JWT_ACCESS_SECRET=your-secret-key-32-chars-minimum
+# All vars required by envSchema must be present
+```
+
+## Testing Patterns (Prepared Structure)
+
+While tests aren't implemented yet, follow these patterns:
+
+```typescript
+// test/modules/auth/auth.service.test.ts
+describe("auth.service", () => {
+  describe("registerUser", () => {
+    it("should create user with hashed password", async () => {
+      const user = await registerUser({
+        email: "test@example.com",
+        password: "password123",
+        name: "Test User"
+      });
+
+      expect(user.email).toBe("test@example.com");
+      expect(user.password).not.toBe("password123"); // hashed
+    });
+
+    it("should throw conflict error if email exists", async () => {
+      // Create user first
+      await registerUser(userData);
+
+      // Attempt duplicate
+      await expect(registerUser(userData)).rejects.toThrow(
+        expect.objectContaining({ statusCode: 409 })
+      );
+    });
+  });
 });
 ```
 
-### Environment Variable Access
+## Logging Pattern
+
+### Using Pino Logger
 
 ```typescript
-import env from "@/shared/configs/env";
+import { logger } from "@/shared/utils/logger";
 
-// All env vars are validated & typed
-console.log(env.PORT); // number
-console.log(env.NODE_ENV); // 'development' | 'test' | 'production'
-console.log(env.DATABASE_URL); // string (URL)
+// Level-based logging
+logger.debug("Processing user", { userId: "123" });
+logger.info("User registered successfully");
+logger.warn("Rate limit approaching", { remainingRequests: 5 });
+logger.error(error, "Failed to upload file");
 
-// Never access process.env directly
-// ✅ Good: type-safe, validated
-// ❌ Bad: import { env } from 'process';
+// In development: pretty-printed to console
+// In production: structured JSON to stdout
 ```
 
-## Related Documentation
+## Database Patterns
 
-- [Project Overview & PDR](./project-overview-pdr.md) — Features, architecture, requirements
-- [System Architecture](./system-architecture.md) — Request lifecycle, middleware stack
-- [Codebase Summary](./codebase-summary.md) — File tree, LOC, module exports
+### Mongoose Queries
+
+```typescript
+// Always use typings
+export const getUserById = async (id: string): Promise<IUser | null> => {
+  return User.findById(id);
+};
+
+// Select fields explicitly
+const user = await User.findById(id).select("+password"); // Include password
+
+// Use indexes for frequently queried fields
+userSchema.index({ email: 1 });
+userSchema.index({ provider: 1, providerId: 1 });
+
+// Transactions for multi-document changes
+const session = await mongoose.startSession();
+session.startTransaction();
+try {
+  // Multiple operations
+  await session.commitTransaction();
+} catch (err) {
+  await session.abortTransaction();
+  throw err;
+}
+```
+
+### Population & References
+
+```typescript
+// If using references (not in current schema)
+const user = await User.findById(id).populate("profileId");
+```
+
+## Security Best Practices
+
+### Password Hashing
+
+```typescript
+import { hashPassword, verifyPassword } from "@/shared/helpers/auth.helpers";
+
+// Hashing (Argon2 - slow, memory-hard)
+const hashed = await hashPassword(plainPassword);
+await User.create({ password: hashed });
+
+// Verification
+const isValid = await verifyPassword(plainPassword, hashedPassword);
+```
+
+### Token Handling
+
+```typescript
+// Store hashed tokens in database
+const tokenHash = await generateHashedToken(plainToken);
+await RefreshToken.create({ tokenHash, userId, expiresAt });
+
+// Verify by comparing hashes
+const storedHash = await RefreshToken.findOne({
+  tokenHash: hashToken(provided)
+});
+```
+
+### OTP Security
+
+```typescript
+// OTPs are time-limited and single-use
+export const verifyOtp = async (email: string, code: string, type: OtpType) => {
+  const otp = await OTP.findOne({ email, otpType: type });
+
+  if (!otp) throw ApiError.notFound("OTP not found");
+  if (otp.isUsed) throw ApiError.conflict("OTP already used");
+  if (otp.expiresAt < new Date()) throw ApiError.badRequest("OTP expired");
+  if (otp.code !== code) throw ApiError.badRequest("Invalid OTP");
+
+  // Mark as used
+  otp.isUsed = true;
+  otp.usedAt = new Date();
+  await otp.save();
+
+  return { valid: true };
+};
+```
+
+## Build & Compilation
+
+### TypeScript Configuration
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "es2022",
+    "strict": true,
+    "sourceMap": true,
+    "declaration": true,
+    "paths": { "@/*": ["./src/*"] }
+  }
+}
+```
+
+### Build Process
+
+```bash
+# 1. TypeScript compilation (output to dist/)
+# 2. Path alias resolution (tsc-alias)
+# 3. Resulting dist/ has .js files ready for node
+
+npm run build     # Full build
+npm run typecheck # Type checking only (no emit)
+```
+
+## Continuous Integration
+
+### Pre-commit Hooks (Husky)
+
+```bash
+# Automatically runs on git commit:
+# 1. lint-staged (eslint --fix, prettier --write)
+# 2. Commit message validation (commitlint)
+
+# If checks fail, commit is blocked
+# Fix issues, stage again, commit again
+```
+
+### Conventional Commits
+
+```
+feat: add Google OAuth integration
+fix: prevent account unlock on wrong OTP
+docs: update authentication flow
+refactor: extract token helpers
+test: add auth service tests
+chore: update dependencies
+```
+
+Format: `{type}: {description}` (lowercase, no period)
+
+## Performance Considerations
+
+### Connection Pooling
+
+```typescript
+// Mongoose auto-pools MongoDB connections
+// Redis maintains a single connection with auto-reconnect
+// Don't create multiple client instances
+```
+
+### Selective Field Queries
+
+```typescript
+// Password not selected by default (marked select: false)
+const user = await User.findById(id);          // password excluded
+const user = await User.findById(id).select("+password");  // password included
+```
+
+### Index Strategy
+
+```typescript
+// Indexes on frequently queried fields
+userSchema.index({ email: 1 });
+userSchema.index({ isDeleted: 1 });
+userSchema.index({ provider: 1, providerId: 1 });
+```
+
+## Code Review Checklist
+
+Before committing:
+
+- [ ] No `any` types
+- [ ] All errors use `ApiError`
+- [ ] All async operations use `asyncHandler` or try-catch
+- [ ] Request body validated with Zod
+- [ ] Response formatted with `ApiResponse`
+- [ ] No console.log (use logger)
+- [ ] No hardcoded secrets
+- [ ] Comments explain why, not what
+- [ ] Imports organized and use `@/` alias
+- [ ] File names kebab-case
+- [ ] Tests pass (when implemented)

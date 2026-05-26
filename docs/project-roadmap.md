@@ -1,448 +1,713 @@
 # Project Roadmap
 
-**Project**: servercn-mongoose-starter  
-**Current Version**: 1.0.0  
-**Last Updated**: 2026-04-04  
-**Repository**: https://github.com/yourusername/servercn-mongoose-starter
+## Current State (v1.0.0)
 
-## Vision
+**Status:** Production Ready  
+**Release Date:** 2025-04-26  
+**Phase:** 2 (Complete)
 
-Create a production-ready Express.js + MongoDB starter template that:
+### What's Implemented
 
-- Accelerates backend API development
-- Enforces best practices from day one
-- Provides clear patterns for scaling to complex applications
-- Serves as both a starter and a learning resource
+#### Phase 1: Core Authentication & Infrastructure (Complete)
 
----
+- User registration with password hashing (argon2)
+- OTP-based login flow (sign-in OTP)
+- JWT token system (access + refresh tokens)
+- Token rotation with reuse detection
+- Account lockout protection (5 attempts, 15 min lockout)
+- Password reset via OTP
+- Global error handling with standardized ApiError
+- Rate limiting (global + per-route)
+- Security headers (Helmet.js)
+- Request validation (Zod schemas)
+- Async error handling (asyncHandler wrapper)
+- MongoDB connection management
+- Graceful shutdown
+- API documentation (Swagger/OpenAPI)
+- Pino logging (pretty-print dev, JSON prod)
+- TypeScript strict mode
+- Path aliases (@/ imports)
+- Code quality tools (ESLint, Prettier, commitlint)
 
-## Release Timeline
+#### Phase 2: Multi-Provider Auth & Email (Complete)
 
-### Phase 1: Foundation (v1.0.0) - COMPLETE ✅
+- Google OAuth2 integration (Passport.js)
+- User profile management (GET, PATCH, DELETE)
+- Avatar upload to Cloudinary
+- Email templating with EJS
+- Nodemailer SMTP integration
+- Account deletion (soft delete) with reactivation
+- Redis integration (session/token store ready)
+- Background job system (node-cron)
+- System monitor job (memory, uptime tracking)
+- User role system (admin, user)
+- Role-based access control middleware
+- Health check endpoint
+- OTP model & service
+- Refresh token model with revocation tracking
 
-**Status**: Complete (Current Release)  
-**Released**: 2026-04-03  
-**Duration**: ~4 weeks
+### Completed Features Matrix
 
-#### Deliverables
-
-**Core Framework**:
-
-- [x] Express 5.x setup with middleware stack
-- [x] MongoDB + Mongoose 9.x integration
-- [x] TypeScript strict mode configuration
-- [x] ESM module support
-
-**Architecture & Patterns**:
-
-- [x] Feature-based modular structure
-- [x] ApiError class with factory methods
-- [x] ApiResponse normalization
-- [x] AsyncHandler for async route handling
-- [x] Graceful shutdown mechanism
-
-**Configuration & Validation**:
-
-- [x] Zod-based environment validation
-- [x] dotenv-flow for multi-environment support
-- [x] Development vs production config separation
-
-**Security & Middleware**:
-
-- [x] Helmet for HTTP security headers
-- [x] CORS with configurable origin (applied FIRST)
-- [x] Custom security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
-- [x] Cookie parser for secure cookie handling
-- [x] Morgan for HTTP request logging
-
-**Developer Experience**:
-
-- [x] Pino structured logging (dev + prod modes)
-- [x] Swagger/OpenAPI documentation setup
-- [x] ESLint + Prettier auto-formatting
-- [x] Husky pre-commit hooks
-- [x] commitlint conventional commits
-
-**API Endpoints**:
-
-- [x] `GET /api/v1/health` — Basic health check
-- [x] `GET /api/v1/health/detailed` — Detailed system info
-- [x] Error handling middleware (404, 500, etc.)
-
-**Documentation**:
-
-- [x] README with setup instructions
-- [x] Code standards & conventions
-- [x] System architecture documentation
-- [x] Codebase summary with LOC breakdown
+| Feature                          | Status      | Priority |
+| -------------------------------- | ----------- | -------- |
+| User registration                | ✅ Complete | High     |
+| Email/password login (OTP-based) | ✅ Complete | High     |
+| JWT token system                 | ✅ Complete | High     |
+| Token refresh & rotation         | ✅ Complete | High     |
+| Account lockout (brute-force)    | ✅ Complete | High     |
+| Password hashing (argon2)        | ✅ Complete | High     |
+| Password reset via OTP           | ✅ Complete | High     |
+| Google OAuth2                    | ✅ Complete | High     |
+| User profile management          | ✅ Complete | Medium   |
+| Avatar upload (Cloudinary)       | ✅ Complete | Medium   |
+| Email delivery (Nodemailer)      | ✅ Complete | Medium   |
+| OTP system                       | ✅ Complete | High     |
+| Rate limiting                    | ✅ Complete | High     |
+| Role-based access control        | ✅ Complete | High     |
+| Background jobs                  | ✅ Complete | Medium   |
+| API documentation (Swagger)      | ✅ Complete | Medium   |
+| Logging (Pino)                   | ✅ Complete | High     |
+| Error handling                   | ✅ Complete | High     |
+| Graceful shutdown                | ✅ Complete | High     |
+| Code quality tools               | ✅ Complete | Medium   |
 
 ---
 
-### Phase 2: Authentication & User Management (v1.1.0) - IN PROGRESS 🔄
+## Future Phases
 
-**Target Release**: Q2 2026  
-**Estimated Duration**: 4-6 weeks  
-**Priority**: High
-**Status**: Foundation complete; OAuth + OTP implemented; finishing core auth
+### Phase 3: Testing & Quality Assurance (Next Priority - Medium Effort)
 
-#### Completed Features ✅
+**Goals:**
 
-**OAuth Integration**:
+- Achieve 80%+ code coverage
+- Automated testing pipeline
+- Reliable CI/CD
+- Production confidence
 
-- [x] Google OAuth strategy via Passport.js
-- [x] OAuth login flow (`GET /oauth/google` → callback → set cookies)
-- [x] User find/create from OAuth profile
-- [x] Reuse `handleToken()` from auth service
+**Tasks:**
 
-**OTP & Email System**:
+- [ ] Setup test framework (Jest or Vitest)
+- [ ] Unit tests for services (auth, otp, upload, oauth)
+  - [ ] auth.service.ts (registerUser, loginAndSendOtp, verifyOtp, etc.)
+  - [ ] otp.service.ts (generateOtp, sendOtp, verifyOtp)
+  - [ ] upload.service.ts (uploadFile, deleteFile)
+  - [ ] oauth.service.ts (syncGoogleUser)
+  - Target: 30-40 test cases
+- [ ] Integration tests for routes
+  - [ ] POST /auth/register
+  - [ ] POST /auth/login
+  - [ ] POST /auth/verify-otp
+  - [ ] POST /auth/refresh-token
+  - [ ] POST /oauth/google/callback
+  - [ ] GET/PATCH /users/me
+  - Target: 20-30 test cases
+- [ ] Setup test database (MongoDB test instance)
+- [ ] Add test coverage reports
+- [ ] GitHub Actions CI/CD pipeline
+  - [ ] Run tests on push
+  - [ ] Lint check
+  - [ ] Type check
+  - [ ] Build verification
+- [ ] Add pre-push hooks (prevent pushing failing tests)
 
-- [x] OTP generation & validation
-- [x] Email template system (EJS) — dynamic variable rendering
-- [x] OTP email template with `<%= name %>` and `<%= code %>`
-- [x] Nodemailer integration for email sending
-- [x] Redis caching for OTP with TTL
+**Effort:** 40-60 hours  
+**Files to Create/Modify:**
 
-**Infrastructure**:
+- `package.json` (add test scripts)
+- `jest.config.js` or `vitest.config.ts`
+- `test/` directory structure
+- `.github/workflows/` CI files
 
-- [x] Redis client initialization with cache helpers
-- [x] Passport.js GoogleOAuth strategy setup
-- [x] EJS template rendering utility
-- [x] Graceful shutdown includes Redis disconnect
+**Success Criteria:**
 
-#### Pending Features
-
-**User Authentication**:
-
-- [ ] JWT (JSON Web Tokens) implementation
-  - [ ] Access token generation & validation
-  - [ ] Refresh token mechanism
-  - [ ] Token expiration & renewal
-- [ ] Password hashing (bcrypt)
-- [ ] Password validation rules
-- [ ] Password reset flow
-
-**User API Endpoints**:
-
-- [ ] `POST /auth/register` — User registration with email verification
-- [ ] `POST /auth/login` — User login (email + password)
-- [ ] `POST /auth/refresh` — Refresh token endpoint
-- [ ] `POST /auth/logout` — Logout (invalidate tokens)
-- [ ] `GET /users/:id` — Get user profile
-- [ ] `PUT /users/:id` — Update user profile
-- [ ] `DELETE /users/:id` — Delete user account
-
-**Authorization**:
-
-- [ ] Role-based access control (RBAC)
-- [ ] User roles: admin, moderator, user
-- [ ] Permission-based endpoint protection
-- [ ] Middleware for role/permission checks
-
-**Testing**:
-
-- [ ] Unit tests for auth logic (>80% coverage)
-- [ ] Integration tests for OAuth flow
-- [ ] OTP generation & verification tests
-- [ ] Email template rendering tests
+- All tests pass
+- Coverage > 80%
+- CI/CD pipeline green on all commits
+- Zero failed builds on main
 
 ---
 
-### Phase 3: Advanced Features (v1.2.0) - PLANNED 📋
+### Phase 4: Additional OAuth Providers (Medium Effort)
 
-**Target Release**: Q3 2026  
-**Estimated Duration**: 6-8 weeks  
-**Priority**: Medium
-**Status**: Redis infrastructure ready; caching patterns can now be implemented
+**Goals:**
 
-#### Features
+- Support multiple identity providers
+- Flexible authentication options for users
+- Competitive feature parity
 
-**Caching Patterns** (Redis infrastructure in place):
+**Tasks:**
 
-- [ ] Cache-aside pattern for queries
-- [ ] Session token caching (24h TTL)
-- [ ] Rate limiting using Redis counters
-- [ ] Automatic cache invalidation on user updates
-- [ ] Cache warming strategies
+- [ ] GitHub OAuth integration
+  - [ ] Create strategy configuration
+  - [ ] Sync GitHub user data
+  - [ ] Handle provider-specific fields
+- [ ] Microsoft/Azure OAuth integration
+  - [ ] Create strategy configuration
+  - [ ] Sync Azure user data
+  - [ ] Handle organization accounts
+- [ ] LinkedIn OAuth integration
+  - [ ] Create strategy configuration
+  - [ ] Sync LinkedIn profile
+- [ ] Generic OAuth2 provider support
+  - [ ] Abstract strategy pattern
+  - [ ] Allow custom provider configuration
+- [ ] Account linking
+  - [ ] Link multiple providers to single user
+  - [ ] Prevent email conflict resolution
+- [ ] Provider-specific features
+  - [ ] GitHub: display repos (optional)
+  - [ ] LinkedIn: display experience (optional)
 
-**File Upload**:
+**Effort:** 20-30 hours  
+**Files to Create/Modify:**
 
-- [ ] AWS S3 integration
-- [ ] File upload endpoints
-- [ ] File type validation
-- [ ] File size limits
+- `src/shared/configs/passport.ts` (expand)
+- `src/modules/oauth/oauth.service.ts` (refactor for multi-provider)
+- `src/modules/oauth/oauth.routes.ts` (add routes)
+- Add new strategy configs in `src/shared/configs/`
 
-**Data Features**:
+**Success Criteria:**
 
-- [ ] Pagination standards (`page`, `limit`, `sort`)
-- [ ] Filtering & search capabilities
-- [ ] Soft delete support (timestamp-based)
-- [ ] Audit logging (who, what, when)
-
-**Notifications** (Email template system in place):
-
-- [ ] Welcome email on registration
-- [ ] Password reset flow with email
-- [ ] Webhook support for external services
-- [ ] Event-driven notifications
-
-**Monitoring**:
-
-- [ ] Application metrics collection
-- [ ] Health check enhancements (Redis status)
-- [ ] Performance monitoring
-- [ ] Error tracking integration
-
----
-
-### Phase 4: Operations & Deployment (v1.3.0) - PLANNED 📋
-
-**Target Release**: Q4 2026  
-**Estimated Duration**: 4-6 weeks  
-**Priority**: Medium
-
-#### Features
-
-**Containerization**:
-
-- [ ] Dockerfile (development & production)
-- [ ] Docker Compose for local development
-- [ ] Multi-stage builds for optimization
-- [ ] Container health checks
-
-**Orchestration**:
-
-- [ ] Kubernetes manifests
-- [ ] Helm charts for deployment
-- [ ] Service configuration
-- [ ] Namespace organization
-
-**CI/CD Pipeline**:
-
-- [ ] GitHub Actions workflows
-- [ ] Automated testing on PR
-- [ ] Linting & code quality checks
-- [ ] Automated deployment to staging
-- [ ] Automated release workflow
-
-**Database**:
-
-- [ ] Database migrations framework
-- [ ] Seed scripts for development
-- [ ] Backup & restore procedures
-- [ ] Connection pooling optimization
-
-**Monitoring & Logging**:
-
-- [ ] Prometheus metrics export
-- [ ] Grafana dashboards
-- [ ] ELK stack integration (optional)
-- [ ] Distributed tracing (optional)
+- All providers functional
+- Account linking works
+- No conflicts between provider accounts
 
 ---
 
-### Phase 5: Performance & Optimization (v1.4.0) - PLANNED 📋
+### Phase 5: Enhanced User Management (Medium Effort)
 
-**Target Release**: 2027 Q1  
-**Priority**: Low-Medium
+**Goals:**
 
-#### Features
+- Admin controls over user lifecycle
+- User self-service account management
+- Better visibility for administrators
 
-- [ ] Query optimization & indexing strategies
-- [ ] Response caching headers
-- [ ] API response compression
-- [ ] Batch operation endpoints
-- [ ] Async job queue (Bull/BullMQ)
-- [ ] Load testing suite
-- [ ] Performance benchmarks
+**Tasks:**
+
+- [ ] Admin user listing
+  - [ ] GET /api/users (admin only, paginated)
+  - [ ] Support filtering by role, status
+  - [ ] Support sorting
+- [ ] Admin user detail
+  - [ ] GET /api/users/:id (admin only)
+  - [ ] Show all user fields (including password hash status)
+- [ ] Admin user update
+  - [ ] PATCH /api/users/:id (admin only)
+  - [ ] Update role, status, email
+- [ ] Admin user deletion
+  - [ ] DELETE /api/users/:id (admin only)
+  - [ ] Hard delete option
+- [ ] User profile enrichment
+  - [ ] PATCH /api/users/me (update avatar, name, bio, phone)
+  - [ ] Validate phone, bio length
+- [ ] User preference storage
+  - [ ] Notification preferences
+  - [ ] Language preference
+  - [ ] Theme preference
+- [ ] Batch operations
+  - [ ] Bulk role assignment
+  - [ ] Bulk deactivation
+  - [ ] Bulk deletion
+
+**Effort:** 25-35 hours  
+**Files to Create/Modify:**
+
+- `src/modules/user/user.routes.ts` (expand)
+- `src/modules/user/user.model.ts` (add fields)
+- Create new `src/modules/user/user.service.ts`
+- Update `src/modules/user/user.validator.ts`
+
+**Success Criteria:**
+
+- Full user CRUD via API
+- Admin-only protection working
+- Batch operations tested
 
 ---
 
-## Feature Backlog
+### Phase 6: Admin Dashboard (High Effort - 2 weeks)
 
-### High Priority
+**Goals:**
 
-- User authentication & authorization system
-- Comprehensive test suite (unit + integration)
-- API rate limiting per user/IP
-- Request validation schemas (Zod)
-- Soft delete & audit logging
+- Visual management interface
+- Real-time monitoring
+- User engagement analytics
 
-### Medium Priority
+**Tasks:**
 
-- Caching layer (Redis)
-- File upload handling (AWS S3)
-- Email notifications
-- Advanced filtering & pagination
-- Docker & Kubernetes support
+- [ ] Frontend admin app (separate React/Vue project)
+  - [ ] User management table
+  - [ ] User detail view
+  - [ ] Bulk actions
+  - [ ] Dashboard with stats
+- [ ] API endpoints for admin panel
+  - [ ] GET /api/admin/stats (user count, active users, etc.)
+  - [ ] GET /api/admin/activity-log (recent actions)
+  - [ ] GET /api/admin/analytics (login trends, OTP success rate)
+- [ ] Activity/audit logging
+  - [ ] Log all user actions (login, profile update, deletion)
+  - [ ] Store in MongoDB audit collection
+  - [ ] Viewable in admin panel
+- [ ] Reporting features
+  - [ ] User registration trends
+  - [ ] Login success/failure rates
+  - [ ] Email delivery status
+  - [ ] File upload statistics
 
-### Low Priority
+**Effort:** 60-80 hours  
+**New Project:** `servercn-admin-dashboard/`
 
-- Distributed tracing
-- Advanced monitoring (Prometheus/Grafana)
-- Webhook system
-- GraphQL support
-- Multi-tenancy support
+**Success Criteria:**
+
+- Dashboard responsive on desktop/tablet
+- Real-time stats update
+- Audit log complete
 
 ---
+
+### Phase 7: Advanced Security Features (High Effort)
+
+**Goals:**
+
+- Enterprise-grade security
+- Compliance certifications ready
+- Audit trail completeness
+
+**Tasks:**
+
+- [ ] Two-Factor Authentication (2FA)
+  - [ ] TOTP (Time-based One-Time Password, Google Authenticator)
+  - [ ] SMS-based 2FA (Twilio integration)
+  - [ ] Backup codes generation & storage
+  - [ ] Enable/disable 2FA endpoints
+- [ ] Device tracking
+  - [ ] Store device fingerprints
+  - [ ] Unknown device detection
+  - [ ] Device-specific sessions
+- [ ] IP whitelist/blacklist
+  - [ ] User can whitelist IPs
+  - [ ] Admin can blacklist IPs
+  - [ ] Geolocation tracking (MaxMind API)
+- [ ] Session management
+  - [ ] List active sessions
+  - [ ] Revoke specific sessions
+  - [ ] Session timeout configuration
+- [ ] Login notifications
+  - [ ] Email on new login
+  - [ ] Alert on suspicious activity
+  - [ ] Failed login notifications
+- [ ] Encryption at rest (optional)
+  - [ ] Sensitive fields encryption (avatar keys, etc.)
+  - [ ] Customer data encryption
+- [ ] API key management (service-to-service auth)
+  - [ ] Generate/revoke API keys
+  - [ ] Per-key rate limiting
+  - [ ] Scope-based permissions
+
+**Effort:** 50-70 hours  
+**Files to Create/Modify:**
+
+- New modules: `src/modules/2fa/`, `src/modules/sessions/`
+- New models for device, session, audit
+- External integrations (Twilio, MaxMind)
+
+**Success Criteria:**
+
+- 2FA fully functional
+- Session management complete
+- No security vulnerabilities
+
+---
+
+### Phase 8: API Versioning & Backward Compatibility (Low-Medium Effort)
+
+**Goals:**
+
+- Support multiple API versions
+- Non-breaking deployments
+- Smooth migrations for clients
+
+**Tasks:**
+
+- [ ] Implement API versioning
+  - [ ] Route structure: `/api/v1/`, `/api/v2/`
+  - [ ] Version negotiation (header or path)
+- [ ] Create v2 with improvements
+  - [ ] Batch endpoints
+  - [ ] Webhook support
+  - [ ] Filtering/sorting enhancements
+- [ ] Deprecation process
+  - [ ] Mark v1 endpoints as deprecated
+  - [ ] Document migration guide
+  - [ ] Timeline for v1 shutdown
+- [ ] Backwards compatibility
+  - [ ] Transform v1 requests to v2 internally
+  - [ ] Transform v2 responses to v1 format
+
+**Effort:** 15-25 hours  
+**Files to Create/Modify:**
+
+- Restructure `src/routes/` to support versions
+- Middleware for version detection
+- API documentation (Swagger per version)
+
+**Success Criteria:**
+
+- v1 and v2 coexist
+- v1 requests work on v1 routes
+- v2 has new features
+
+---
+
+### Phase 9: GraphQL Alternative Endpoint (High Effort)
+
+**Goals:**
+
+- Modern API alternative to REST
+- Flexible querying for frontend
+- Competitive feature offering
+
+**Tasks:**
+
+- [ ] Setup Apollo Server
+  - [ ] Install apollo-server, graphql
+  - [ ] Mount at `/api/graphql`
+- [ ] Define GraphQL schema
+  - [ ] Type definitions for User, OTP, RefreshToken
+  - [ ] Query resolvers (getUser, listUsers, etc.)
+  - [ ] Mutation resolvers (register, login, etc.)
+  - [ ] Subscription resolvers (real-time updates)
+- [ ] Authentication in GraphQL
+  - [ ] JWT verification for GraphQL context
+  - [ ] @auth directive for protected queries
+- [ ] Migrate resolvers
+  - [ ] Reuse existing services
+  - [ ] Map REST endpoints to GraphQL operations
+- [ ] Testing & documentation
+  - [ ] GraphQL tests
+  - [ ] Apollo Sandbox for exploration
+
+**Effort:** 40-60 hours  
+**Files to Create/Modify:**
+
+- New directory: `src/graphql/`
+- `src/graphql/schema.ts`
+- `src/graphql/resolvers/`
+- `src/app.ts` (mount Apollo server)
+
+**Success Criteria:**
+
+- GraphQL endpoint functional
+- Query and mutation coverage
+- Playground available
+
+---
+
+### Phase 10: Containerization & Deployment (Medium Effort)
+
+**Goals:**
+
+- Docker deployment ready
+- Kubernetes orchestration ready
+- Multi-environment support
+
+**Tasks:**
+
+- [ ] Docker setup
+  - [ ] Create `Dockerfile` (multi-stage build)
+  - [ ] Create `docker-compose.yml` (dev environment)
+  - [ ] Optimize image size
+  - [ ] Health checks in Docker
+- [ ] Kubernetes setup
+  - [ ] Create k8s manifests
+  - [ ] Deployment configuration
+  - [ ] Service definition
+  - [ ] ConfigMap for env vars
+  - [ ] Secret for sensitive vars
+  - [ ] Horizontal Pod Autoscaling
+- [ ] CI/CD pipeline enhancement
+  - [ ] Docker image build in GitHub Actions
+  - [ ] Push to Docker Hub/ECR
+  - [ ] Deploy to staging on PR
+  - [ ] Deploy to production on main merge
+- [ ] Deployment documentation
+  - [ ] Local Docker setup guide
+  - [ ] K8s deployment guide
+  - [ ] Environment configuration
+  - [ ] Scaling guidelines
+
+**Effort:** 25-35 hours  
+**Files to Create:**
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `.dockerignore`
+- `k8s/` directory (manifests)
+- `deployment/` scripts
+
+**Success Criteria:**
+
+- Docker image builds successfully
+- docker-compose runs full stack
+- K8s manifests deploy to cluster
+
+---
+
+### Phase 11: Monitoring & Observability (Medium Effort)
+
+**Goals:**
+
+- Production-grade monitoring
+- Alerting on failures
+- Performance insights
+
+**Tasks:**
+
+- [ ] Metrics collection
+  - [ ] Prometheus integration
+  - [ ] Custom metrics (request latency, error rate)
+  - [ ] Database metrics exposure
+- [ ] Distributed tracing
+  - [ ] OpenTelemetry integration
+  - [ ] Jaeger backend
+  - [ ] Trace context propagation
+- [ ] Log aggregation
+  - [ ] ELK stack (Elasticsearch, Logstash, Kibana)
+  - [ ] Or Datadog/New Relic integration
+  - [ ] Structured logging from Pino
+- [ ] Alerting rules
+  - [ ] High error rate alert
+  - [ ] Database connection pool exhaustion
+  - [ ] Memory usage spike
+  - [ ] Response time degradation
+- [ ] Dashboards
+  - [ ] Grafana dashboards
+  - [ ] Real-time metrics visualization
+  - [ ] SLA tracking
+
+**Effort:** 30-40 hours  
+**Files to Create/Modify:**
+
+- `src/shared/utils/metrics.ts` (Prometheus exporter)
+- Prometheus/Grafana configurations
+- Alert rules (YAML)
+
+**Success Criteria:**
+
+- Metrics visible in Prometheus
+- Grafana dashboards working
+- Alerts triggering correctly
+
+---
+
+### Phase 12: Performance Optimization (Medium Effort)
+
+**Goals:**
+
+- Sub-100ms response times
+- Handle 10k+ concurrent users
+- Minimal resource usage
+
+**Tasks:**
+
+- [ ] Database optimization
+  - [ ] Query analysis & indexing
+  - [ ] N+1 query elimination
+  - [ ] Connection pool tuning
+  - [ ] MongoDB aggregation pipeline
+- [ ] Caching strategy
+  - [ ] Redis for frequently accessed data
+  - [ ] Cache invalidation patterns
+  - [ ] CDN for static assets (if any)
+- [ ] Code profiling
+  - [ ] Identify bottlenecks (Node.js profiler)
+  - [ ] Optimize hot paths
+  - [ ] Memory leak detection
+- [ ] Load testing
+  - [ ] k6 or Artillery load tests
+  - [ ] Identify breaking points
+  - [ ] Capacity planning
+- [ ] Compression & minification
+  - [ ] gzip compression for responses
+  - [ ] Bundle size analysis
+  - [ ] Lazy loading for routes
+
+**Effort:** 20-30 hours
+
+**Success Criteria:**
+
+- P95 response time < 100ms
+- Can handle 10k req/s
+- Memory stable under load
+
+---
+
+## Version Timeline
+
+| Version | Phase | Status   | Target Date | Focus                                     |
+| ------- | ----- | -------- | ----------- | ----------------------------------------- |
+| 1.0.0   | 1-2   | Complete | 2025-04-26  | Core auth, Google OAuth, email            |
+| 1.1.0   | 3     | Planned  | 2025-06-30  | Testing, CI/CD, code coverage             |
+| 1.2.0   | 4     | Planned  | 2025-07-31  | GitHub, Microsoft, LinkedIn OAuth         |
+| 2.0.0   | 5-6   | Planned  | 2025-09-30  | Enhanced user management, admin dashboard |
+| 2.1.0   | 7     | Planned  | 2025-11-30  | 2FA, device tracking, advanced security   |
+| 2.2.0   | 8-9   | Planned  | 2026-01-31  | API versioning, GraphQL                   |
+| 3.0.0   | 10-12 | Planned  | 2026-03-31  | K8s, monitoring, performance              |
+
+## Dependency Roadmap
+
+### Current Dependencies (v1.0.0)
+
+All core packages locked to compatible versions. See `package.json` for specifics.
+
+### Planned Additions
+
+**Phase 3 (Testing):**
+
+- jest or vitest
+- @types/jest
+- supertest (HTTP testing)
+
+**Phase 4 (OAuth):**
+
+- passport-github (already have passport-google)
+- passport-azure-ad
+- passport-linkedin
+
+**Phase 5 (User Management):**
+
+- No new dependencies (service layer only)
+
+**Phase 7 (2FA):**
+
+- speakeasy (TOTP)
+- qrcode (QR code generation)
+- twilio (SMS)
+- maxmind-db (geolocation)
+
+**Phase 9 (GraphQL):**
+
+- apollo-server-express
+- graphql
+- graphql-resolvers
+
+**Phase 10 (Containerization):**
+
+- No npm changes (Docker-specific)
+
+**Phase 11 (Monitoring):**
+
+- prom-client (Prometheus)
+- @opentelemetry/api, @opentelemetry/sdk-node
+- elastic-apm-node (Elastic APM)
+
+## Breaking Changes & Migration
+
+### v1.0.0 → v1.1.0
+
+No breaking changes expected.
+
+### v1.1.0 → v2.0.0
+
+Potential breaking changes:
+
+- API response format may change
+- New validation rules
+- Migration guide will be provided
+
+### v2.0.0 → v2.1.0
+
+No breaking changes (2FA is additive).
+
+### v2.2.0 → v3.0.0
+
+Significant changes:
+
+- API versioning (v1, v2 routes)
+- GraphQL endpoint addition
+- Deprecated REST patterns replaced
+
+## Contribution Guidelines
+
+### For Contributors
+
+1. Pick a task from the roadmap
+2. Create a branch: `feature/{feature-name}`
+3. Follow code standards in `./docs/code-standards.md`
+4. Write tests (after Phase 3)
+5. Submit PR with clear description
+6. Ensure CI/CD passes
+7. Request review from maintainers
+
+### Review Criteria
+
+- [ ] Code follows standards
+- [ ] Tests pass (phase 3+)
+- [ ] No security issues
+- [ ] Documentation updated
+- [ ] Commit messages conventional
+
+## Known Limitations & Technical Debt
+
+### Current Limitations
+
+1. No automated tests (Phase 3 will address)
+2. Rate limiting in-memory (Redis migration planned)
+3. No 2FA support (Phase 7)
+4. No batch operations (Phase 5)
+5. Single API version (Phase 8)
+6. No GraphQL (Phase 9)
+
+### Technical Debt
+
+- [ ] Refactor large service files (>300 LOC) - Phase 3
+- [ ] Consolidate validation logic - Phase 5
+- [ ] Optimize database queries - Phase 12
+- [ ] Update deprecated packages - Ongoing
 
 ## Success Metrics
 
 ### Code Quality
 
-| Metric                 | Target | Current | Status      |
-| ---------------------- | ------ | ------- | ----------- |
-| Test Coverage          | >80%   | 0%      | ❌ Pending  |
-| TypeScript strict mode | 100%   | 100%    | ✅ Complete |
-| ESLint passing         | 100%   | 100%    | ✅ Complete |
-| No console.log in code | 100%   | 100%    | ✅ Complete |
-| Type safety (no `any`) | 100%   | 100%    | ✅ Complete |
+- [ ] TypeScript strict mode: 100% enabled
+- [ ] ESLint: 0 errors
+- [ ] Test coverage: > 80% (Phase 3+)
+- [ ] Code duplication: < 5%
 
 ### Performance
 
-| Metric              | Target | Current  | Status  |
-| ------------------- | ------ | -------- | ------- |
-| API response time   | <100ms | <100ms   | ✅ Good |
-| Server startup time | <5s    | 1-2s     | ✅ Good |
-| Graceful shutdown   | <10s   | 3-5s     | ✅ Good |
-| Memory usage        | <100MB | ~50-60MB | ✅ Good |
+- [ ] Response time (p95): < 100ms
+- [ ] Database query time (p95): < 50ms
+- [ ] Memory usage: < 200MB
+- [ ] Concurrent users: 10k+
 
-### Documentation
+### Reliability
 
-| Metric              | Target           | Current  | Status      |
-| ------------------- | ---------------- | -------- | ----------- |
-| Code documentation  | 100%             | 100%     | ✅ Complete |
-| Architecture docs   | Complete         | Complete | ✅ Complete |
-| API documentation   | 100%             | 100%     | ✅ Complete |
-| README completeness | Full setup guide | Complete | ✅ Complete |
+- [ ] Uptime: 99.9%+
+- [ ] Error rate: < 0.1%
+- [ ] Failed deploys: 0%
+- [ ] Security vulnerabilities: 0
 
-### Developer Experience
+### User Experience
 
-| Metric                  | Target      | Status    |
-| ----------------------- | ----------- | --------- |
-| Setup time              | <10 minutes | ✅ ~5 min |
-| First endpoint creation | <5 minutes  | ✅ Easy   |
-| Debugging experience    | Easy        | ✅ Good   |
-| Code IDE support        | Full        | ✅ Full   |
+- [ ] API docs: Complete
+- [ ] Setup time: < 10 minutes
+- [ ] Onboarding: Self-service
+- [ ] Support response: < 24h
 
----
+## Getting Involved
 
-## Known Issues & Constraints
+Want to contribute? Start with:
 
-### Current Limitations
+1. Review Phase 3 (testing) - highest priority
+2. Pick a test file to implement
+3. Open a discussion or PR
+4. Follow contribution guidelines above
 
-**v1.0.0**:
+Questions? Issues? Ideas?
 
-- No authentication (planned v1.1.0)
-- No user management API (planned v1.1.0)
-- No caching layer (planned v1.2.0)
-- No file uploads (planned v1.2.0)
-- No automated tests (planned v1.1.0)
-- No Docker/Kubernetes (planned v1.3.0)
+- GitHub Issues: Report bugs, request features
+- GitHub Discussions: Ask questions, share ideas
+- Pull Requests: Contribute code
 
-### Technical Debt
-
-- Monitor for TypeScript/Express updates
-- Keep security dependencies up-to-date
-- Review error handling patterns as features grow
-- Plan for database query optimization when Phase 3 scales data
-
----
-
-## Dependencies & Version Strategy
-
-### Core Dependencies
-
-**Current Versions** (v1.0.0):
-
-- Node.js: ^18.0.0 (LTS)
-- TypeScript: 6.0.2
-- Express: 5.2.1
-- Mongoose: 9.3.3
-- Zod: 4.3.6
-
-### Update Policy
-
-- **Critical security fixes**: Patch immediately
-- **Minor feature updates**: Evaluate for benefits
-- **Major version upgrades**: Plan for next phase release
-- **Dev dependencies**: Update quarterly
-
-### Compatibility
-
-| Technology | Supported Versions | Notes                     |
-| ---------- | ------------------ | ------------------------- |
-| Node.js    | 18+                | ESM modules required      |
-| MongoDB    | 4.4+               | Mongoose 9.x compatible   |
-| npm/pnpm   | Latest             | Either package manager OK |
-| TypeScript | 5.0+               | Strict mode mandatory     |
-
----
-
-## Risk Assessment
-
-### Identified Risks
-
-| Risk                               | Likelihood | Impact | Mitigation                        |
-| ---------------------------------- | ---------- | ------ | --------------------------------- |
-| Security vulnerability in deps     | Medium     | High   | Automated scanning, quick updates |
-| Breaking changes in Express 5.x    | Low        | Medium | Vendor lock-in testing            |
-| MongoDB connection issues          | Low        | Medium | Graceful shutdown, retry logic    |
-| Performance degradation with scale | Low        | High   | Performance testing in Phase 5    |
-
-### Contingency Plans
-
-- **If auth takes longer**: Extend Phase 2 timeline
-- **If scaling issues found**: Bring forward Phase 5 optimization
-- **If critical security issue**: Hotfix release (v1.0.x)
-
----
-
-## Communication & Milestones
-
-### Release Schedule
-
-| Version | Target Date | Features          | Status      |
-| ------- | ----------- | ----------------- | ----------- |
-| 1.0.0   | 2026-04-03  | Foundation        | ✅ Released |
-| 1.1.0   | 2026-06-30  | Auth & User       | 📋 Planned  |
-| 1.2.0   | 2026-09-30  | Advanced Features | 📋 Planned  |
-| 1.3.0   | 2026-12-31  | Operations        | 📋 Planned  |
-| 1.4.0   | 2027-03-31  | Performance       | 📋 Planned  |
-
-### Change Notification
-
-- **Major changes**: GitHub Releases + CHANGELOG.md
-- **Security fixes**: GitHub Security Advisory
-- **Breaking changes**: Migration guide required
-- **Deprecations**: 2-release notice period
-
----
-
-## Next Steps
-
-### Immediate (Next 2 Weeks)
-
-1. Gather feedback from early users
-2. Document any common issues
-3. Plan Phase 2 implementation details
-
-### Short Term (Next Month)
-
-1. Begin Phase 2 (Auth & User Management)
-2. Set up automated test suite
-3. Create integration test examples
-
-### Medium Term (Next Quarter)
-
-1. Complete Phase 2 release
-2. Start Phase 3 (Advanced Features)
-3. Evaluate community requests
-
----
-
-## Related Documentation
-
-- [Project Overview & PDR](./project-overview-pdr.md) — Detailed requirements, PDR
-- [Code Standards](./code-standards.md) — Implementation guidelines
-- [System Architecture](./system-architecture.md) — Technical details
-- [Codebase Summary](./codebase-summary.md) — Current codebase state
+Thank you for being part of this journey!

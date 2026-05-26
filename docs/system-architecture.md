@@ -1,635 +1,942 @@
 # System Architecture
 
-**Project**: servercn-mongoose-starter v1.1.0  
-**Last Updated**: 2026-04-07  
-**Architecture Style**: Feature-based modular with layered middleware + OAuth + Redis
+## High-Level Overview
 
-## High-Level Architecture
+Express-Mongoose-Boilerplate is a three-tier REST API architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     HTTP Request                             │
+│                    HTTP Clients (Frontend)                   │
 └────────────────────────┬────────────────────────────────────┘
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  Express Middleware Stack                    │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ 1. Security Headers (Helmet + CORS + Custom Headers)  │ │
-│  │ 2. Body Parser (JSON, URL-encoded)                     │ │
-│  │ 3. Cookie Parser                                       │ │
-│  │ 4. Morgan (HTTP Logging)                               │ │
-│  │ 5. Swagger UI Setup                                    │ │
-│  └────────────────────────────────────────────────────────┘ │
-└────────────────────────┬────────────────────────────────────┘
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Route Matching                            │
-│                  (*/health, */user, etc.)                    │
-└────────────────────────┬────────────────────────────────────┘
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│              Feature Module (Controller)                     │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ 1. Validate Request (Zod)                              │ │
-│  │ 2. Business Logic (Service layer)                      │ │
-│  │ 3. Database Queries (Mongoose)                         │ │
-│  │ 4. Response Formatting (ApiResponse)                   │ │
-│  └────────────────────────────────────────────────────────┘ │
-└────────────────────────┬────────────────────────────────────┘
-                         ↓
-                    Response/Error
-                         ↓
-    ┌────────────────────┴────────────────────┐
-    ↓                                          ↓
-  ApiResponse                            ApiError/Exception
-    │                                          │
-    └────────────────────┬────────────────────┘
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│             Global Error Handler Middleware                 │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ 1. Catch all errors (sync & async)                     │ │
-│  │ 2. Format as ApiResponse                               │ │
-│  │ 3. Log error details                                   │ │
-│  │ 4. Set appropriate HTTP status code                    │ │
-│  └────────────────────────────────────────────────────────┘ │
-└────────────────────────┬────────────────────────────────────┘
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   JSON Response                              │
-│  {                                                           │
-│    "success": boolean,                                       │
-│    "message": string,                                        │
-│    "statusCode": number,                                     │
-│    "data": any,                                              │
-│    "errors": any                                             │
-│  }                                                           │
-└─────────────────────────────────────────────────────────────┘
+                         │
+        ┌────────────────┴────────────────┐
+        │                                 │
+    ┌───▼────────┐                   ┌───▼────────┐
+    │  Browser   │                   │  Mobile    │
+    │  API Calls │                   │  App       │
+    └───┬────────┘                   └───┬────────┘
+        │                                 │
+        └────────────────┬────────────────┘
+                         │ HTTP/HTTPS
+        ┌────────────────▼────────────────────┐
+        │   Express Server (Port 3000)         │
+        │  ┌──────────────────────────────┐   │
+        │  │  Middleware Layer            │   │
+        │  │ - Security Headers (Helmet)  │   │
+        │  │ - Rate Limiting              │   │
+        │  │ - Body Parsing               │   │
+        │  │ - Request Validation (Zod)   │   │
+        │  │ - Authentication/Authorization│  │
+        │  └──────────────────────────────┘   │
+        │  ┌──────────────────────────────┐   │
+        │  │  Route Layer                 │   │
+        │  │ - /api/auth (auth logic)     │   │
+        │  │ - /api/oauth (OAuth2)        │   │
+        │  │ - /api/users (profiles)      │   │
+        │  │ - /api/upload (files)        │   │
+        │  │ - /api/health (monitoring)   │   │
+        │  └──────────────────────────────┘   │
+        │  ┌──────────────────────────────┐   │
+        │  │  Service Layer               │   │
+        │  │ - Auth Service               │   │
+        │  │ - OTP Service                │   │
+        │  │ - Upload Service             │   │
+        │  └──────────────────────────────┘   │
+        └─────┬──┬──────────┬─────────┬───────┘
+              │  │          │         │
+    ┌─────────▼─┐│   ┌──────▼──┐  ┌──▼──────────┐
+    │ MongoDB   ││   │  Redis   │  │  Background│
+    │ (Data)    ││   │ (Session)│  │  Jobs      │
+    │           ││   │          │  │ (Cron)     │
+    └───────────┘│   └──────────┘  └────────────┘
+      │ External  │
+      │ Services  │
+    ┌─▼────────┐ ┌▼──────────┐ ┌──────────┐
+    │Cloudinary│ │ Nodemailer│ │Passport  │
+    │(Files)   │ │(Email)    │ │(OAuth2)  │
+    └──────────┘ └───────────┘ └──────────┘
 ```
-
-## Middleware Stack Order
-
-The order is **critical** for correct behavior. Express processes middleware sequentially:
-
-| Order | Middleware                   | Purpose                        | Code Location      |
-| ----- | ---------------------------- | ------------------------------ | ------------------ |
-| 1     | `configureSecurityHeaders()` | Helmet + CORS + custom headers | security-header.ts |
-| 2     | `express.json()`             | Parse JSON bodies              | app.ts             |
-| 3     | `express.urlencoded()`       | Parse form data                | app.ts             |
-| 4     | `cookieParser()`             | Cookie handling                | app.ts             |
-| 5     | `morgan()`                   | HTTP request logging           | app.ts             |
-| 6     | `passport.initialize()`      | OAuth middleware setup         | app.ts             |
-| 7     | `setupSwagger()`             | Swagger UI setup               | app.ts             |
-| 8     | Routes                       | Feature routes                 | app.ts             |
-| 9     | `notFoundHandler`            | 404 responses                  | app.ts             |
-| 10    | `errorHandler`               | Global error handling          | app.ts             |
-
-**Critical**: Security middleware MUST be first. Passport goes before routes. Error handler MUST be last.
 
 ## Request Lifecycle
 
-### 1. Request Entry
+### 1. HTTP Request Arrives
 
 ```
-GET /health
-  ├── Host validation (CORS)
-  ├── Helmet security headers applied
-  └── Body parsed (if POST/PUT/PATCH)
+Client HTTP Request
+        ↓
+Express Router (port 3000)
 ```
 
-### 2. Route Matching
+### 2. Security & Middleware Chain
 
 ```
-Route matching via routes/index.ts
-  └── health.routes.ts router engaged
-      ├── Route: GET /
-      ├── Handler: healthCheck (wrapped in AsyncHandler)
-      └── Next: Request forwarded to controller
+1. Security Headers (Helmet)
+   ├─ X-Frame-Options
+   ├─ X-Content-Type-Options
+   ├─ Strict-Transport-Security
+   └─ etc.
+
+2. Rate Limiting
+   ├─ Global throttle (100 req/15 min per IP)
+   └─ Per-route overrides (stricter for auth)
+
+3. Body Parsing
+   ├─ express.json() → Parse JSON
+   ├─ express.urlencoded() → Parse form data
+   └─ cookieParser() → Extract cookies
+
+4. Morgan Logging
+   └─ Log request: method, path, status, response time
+
+5. Route Matching
+   └─ Find matching route handler
+
+6. Authentication (if required)
+   ├─ Extract token from Authorization header or cookie
+   ├─ Verify JWT signature
+   ├─ Extract user data (userId, role)
+   └─ Attach to req.user
+
+7. Authorization (if required)
+   ├─ Check user role matches route requirements
+   └─ Or deny access
 ```
 
-### 3. Controller Execution
+### 3. Controller (Request Handler)
 
 ```
-healthCheck controller
-  ├── Validate request (if needed)
-  ├── Execute business logic
-  │   └── Query database (optional)
-  ├── Format response (ApiResponse)
-  └── Return response or throw ApiError
+Controller
+├─ Extract request data (body, params, query)
+├─ Call service method
+├─ Format response
+└─ Send response (via ApiResponse)
 ```
 
-### 4. Success Response
+### 4. Service (Business Logic)
 
 ```
-ApiResponse.Success(res, message, data, statusCode)
-  ├── Instantiate ApiResponse object
-  ├── Call .send(res)
-  ├── res.status(statusCode).json({...})
-  └── HTTP 200/201 response sent
+Service
+├─ Validate data
+├─ Query database (Mongoose)
+├─ Call external services (Cloudinary, email)
+├─ Apply business rules
+├─ Throw ApiError if validation/logic fails
+└─ Return result to controller
 ```
 
-### 5. Error Handling
+### 5. Model (Data Layer)
 
 ```
-throw ApiError.notFound("User not found")
-  ├── Caught by AsyncHandler
-  ├── Forwarded to errorHandler via next()
-  ├── errorHandler identifies ApiError
-  ├── Formats as ApiResponse
-  ├── Logs error details
-  └── Sends HTTP 404 response
+Mongoose Model
+├─ Query MongoDB
+├─ Apply schema validation
+├─ Return typed data (IUser, etc.)
+└─ Or throw Mongoose errors (caught as ApiError)
 ```
 
-## Feature Module Architecture
-
-### Module Structure Pattern
-
-Each feature module follows this pattern:
+### 6. Response
 
 ```
-modules/{feature}/
-├── {feature}.routes.ts      # Express Router definition
-├── {feature}.controller.ts  # Request handlers
-├── {feature}.model.ts       # Mongoose schema + interface
-└── {feature}.service.ts     # Business logic (optional)
+If Success:
+  ApiResponse.ok(res, "Success", data)
+  → HTTP 200 with JSON
+
+If Error:
+  Caught by global error handler
+  → ApiResponse with statusCode and message
+  → HTTP 4xx/5xx with JSON
 ```
 
-### Data Flow Within Module
+## Authentication Flow
+
+### Local Authentication (Email/Password)
+
+```
+1. User Registration
+   ┌─────────────┐
+   │ POST /register
+   │ {email, password, name, role}
+   └─────────────┘
+           ↓
+   ┌─────────────┐
+   │ Service: registerUser
+   │ ├─ Check email not exists
+   │ ├─ Hash password (argon2)
+   │ └─ Create user in MongoDB
+   └─────────────┘
+           ↓
+   ┌─────────────┐
+   │ Return: User object (200 Created)
+   └─────────────┘
+
+2. User Login & OTP Generation
+   ┌─────────────┐
+   │ POST /login
+   │ {email, password}
+   └─────────────┘
+           ↓
+   ┌─────────────┐
+   │ Service: loginAndSendOtp
+   │ ├─ Find user by email
+   │ ├─ Verify password (argon2)
+   │ ├─ Check account not locked
+   │ ├─ Track failed attempts
+   │ ├─ Generate OTP
+   │ ├─ Render EJS email template
+   │ └─ Send email via Nodemailer
+   └─────────────┘
+           ↓
+   ┌─────────────┐
+   │ Return: { message: "OTP sent to email" } (200 OK)
+   └─────────────┘
+
+3. OTP Verification & Token Issuance
+   ┌─────────────┐
+   │ POST /verify-otp
+   │ {email, code}
+   └─────────────┘
+           ↓
+   ┌─────────────┐
+   │ Service: verifyOtpAndLogin
+   │ ├─ Find OTP by email & code
+   │ ├─ Check OTP not expired
+   │ ├─ Check OTP not used
+   │ ├─ Mark OTP as used
+   │ ├─ Reset failed login attempts
+   │ ├─ Generate JWT access token (1h)
+   │ ├─ Generate refresh token
+   │ ├─ Hash & store refresh token in DB
+   │ ├─ Set secure cookies
+   │ └─ Update lastLoginAt
+   └─────────────┘
+           ↓
+   ┌─────────────┐
+   │ Return: { accessToken, refreshToken, user } (200 OK)
+   │ Cookies: accessToken (httpOnly), refreshToken (httpOnly)
+   └─────────────┘
+```
+
+### Token Refresh Flow
+
+```
+Client Token Expired
+        ↓
+┌─────────────────────────┐
+│ POST /refresh-token
+│ { refreshToken }
+└─────────────────────────┘
+        ↓
+┌─────────────────────────┐
+│ Service: refreshAccessToken
+│ ├─ Verify refresh token signature
+│ ├─ Find stored refresh token
+│ ├─ Check not revoked
+│ ├─ Check not expired
+│ ├─ Detect reuse (security check)
+│ ├─ Generate new access token
+│ ├─ Generate new refresh token
+│ ├─ Revoke old refresh token
+│ ├─ Mark new as replacement
+│ └─ Update cookies
+└─────────────────────────┘
+        ↓
+┌─────────────────────────┐
+│ Return: { accessToken, refreshToken } (200 OK)
+└─────────────────────────┘
+```
+
+### Google OAuth2 Flow
+
+```
+1. Frontend requests authorization URL
+   ┌─────────────────────────┐
+   │ GET /oauth/google/url
+   └─────────────────────────┘
+           ↓
+   ┌─────────────────────────┐
+   │ Return: Google auth URL
+   │ (redirect_uri set to callback endpoint)
+   └─────────────────────────┘
+
+2. User authorizes in Google consent screen
+   └─ User redirected to: /oauth/google/callback?code=...
+
+3. Backend exchanges code for tokens
+   ┌─────────────────────────┐
+   │ GET /oauth/google/callback?code=xxx
+   └─────────────────────────┘
+           ↓
+   ┌─────────────────────────┐
+   │ Passport.js GoogleStrategy
+   │ ├─ Exchange code for tokens
+   │ ├─ Fetch user profile
+   │ └─ Verify signature
+   └─────────────────────────┘
+           ↓
+   ┌─────────────────────────┐
+   │ Service: syncGoogleUser
+   │ ├─ Find user by provider+providerId
+   │ ├─ If exists: update avatar & email
+   │ ├─ If not exists: create new user
+   │ ├─ Generate JWT tokens
+   │ └─ Set cookies
+   └─────────────────────────┘
+           ↓
+   ┌─────────────────────────┐
+   │ Redirect to frontend with tokens
+   │ (or set in response body)
+   └─────────────────────────┘
+```
+
+## OTP System
+
+### OTP Generation & Delivery
+
+```
+Service: sendOtp
+├─ Generate 6-digit code
+├─ Set expiry (5-10 minutes)
+├─ Store in MongoDB (hashed)
+└─ Send via email
+    ├─ Render EJS template (signin-otp.ejs)
+    ├─ Replace variables ({{ otp_code }}, etc.)
+    └─ Send via Nodemailer SMTP
+
+MongoDB OTP Document:
+{
+  _id: ObjectId,
+  email: "user@example.com",
+  otpType: "SIGNIN",      // or "PASSWORD_RESET"
+  code: "hashed_123456",
+  expiresAt: Date,
+  isUsed: false,
+  usedAt: null,
+  createdAt: Date
+}
+```
+
+### OTP Verification
+
+```
+Service: verifyOtp
+├─ Find OTP by email & type
+├─ Check not expired: OTP.expiresAt > now()
+├─ Check not used: OTP.isUsed === false
+├─ Compare provided code with stored hash
+├─ Mark OTP as used (set isUsed=true, usedAt=now())
+└─ Return true (single-use guarantee)
+
+If any check fails:
+└─ Throw ApiError (badRequest, notFound, conflict, etc.)
+```
+
+## Token System
+
+### JWT Access Token
+
+```
+Structure: Header.Payload.Signature
+
+Header:
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+
+Payload (signed, not encrypted):
+{
+  "userId": "user_mongo_id",
+  "role": "user" or "admin",
+  "iat": 1234567890,
+  "exp": 1234571490  (typically 1 hour)
+}
+
+Signature:
+HMACSHA256(
+  base64UrlEncode(header) + "." + base64UrlEncode(payload),
+  JWT_ACCESS_SECRET
+)
+
+Usage:
+├─ Sent in Authorization header: "Bearer <token>"
+├─ Or in httpOnly cookie: accessToken
+├─ Verified on every protected route
+└─ Short-lived (1h) for security
+```
+
+### Refresh Token
+
+```
+Structure: Stored as HASH in DB, issued as plain JWT
+
+Generation:
+├─ Create random token payload with userId
+├─ Generate JWT with long expiry (7 days)
+├─ Hash the plain token
+└─ Store hash in RefreshToken collection
+
+Verification:
+├─ Receive plain token from client
+├─ Hash it
+├─ Look up stored hash in DB
+├─ Check not revoked
+├─ Check not expired
+├─ Verify JWT signature
+└─ Return decoded payload
+
+Rotation:
+├─ On refresh, old refresh token is revoked
+├─ New refresh token issued
+├─ Reuse detection: if old token used again → security breach
+└─ Alert user or block account
+
+RefreshToken Document:
+{
+  _id: ObjectId,
+  userId: ObjectId,
+  tokenHash: "hashed_token",
+  expiresAt: Date (7 days from now),
+  isRevoked: false,
+  revokedAt: null,
+  replacedByTokenHash: "new_token_hash",
+  createdAt: Date
+}
+```
+
+## Middleware Chain Detailed
 
 ```
 HTTP Request
     ↓
-{feature}.routes.ts (Router)
+app.use(configureSecurityHeaders)
+├─ Helmet.js middleware
+├─ Sets security headers
+└─ Prevents common attacks
+
     ↓
-{feature}.controller.ts (AsyncHandler wrapper)
-    ├── Validate input (Zod schema)
-    ├── Call service/model methods
-    └── Format response (ApiResponse)
+app.use(rateLimiter)
+├─ Global: 100 req/15 min per IP
+├─ Per-route overrides for auth endpoints
+└─ Returns 429 if limit exceeded
+
     ↓
-{feature}.model.ts (Mongoose)
-    ├── Schema definition (database structure)
-    └── Type interface (TypeScript types)
+app.use(express.json())
+app.use(express.urlencoded())
+app.use(cookieParser())
+├─ Parse request body
+├─ Extract cookies
+└─ Attach to req.body, req.cookies
+
     ↓
-{feature}.service.ts (optional, for complex logic)
-    └── Database operations
-        Mongoose queries
-        Business logic
+app.use(morgan)
+├─ Log request details
+└─ Format: method, path, status, response time
+
+    ↓
+setupSwagger(app)
+├─ Mount Swagger UI at /api/docs
+└─ Serve OpenAPI.json
+
+    ↓
+app.get("/") → Redirect to /api/health
+
+    ↓
+app.use("/api", Routes)
+├─ Route-specific middlewares
+├─ Example: verifyAuth for protected routes
+│   └─ Extract & verify JWT
+│   └─ Attach user to req.user
+├─ Example: validateRequest for POST/PUT
+│   └─ Validate body against Zod schema
+└─ Controller handler
+
+    ↓
+If route not found:
+app.use(notFoundHandler)
+└─ Return 404 JSON
+
+    ↓
+If any error thrown:
+app.use(errorHandler)
+├─ Check if ApiError or other error
+├─ If ApiError: return statusCode + message
+├─ If other: log, return 500
+└─ Format response as JSON
 ```
 
-### Example: User Module
+## Database Architecture
 
-```typescript
-// routes: Define endpoints
-export const userRouter = express.Router();
-userRouter.get('/:id', userController.getUser);
-userRouter.post('/', userController.createUser);
+### MongoDB Collections
 
-// controller: Handle requests
-export const userController = {
-  getUser: AsyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) throw ApiError.notFound('User not found');
-    return ApiResponse.ok(res, 'User found', user);
-  })
+```
+users
+├─ _id: ObjectId
+├─ name: String
+├─ email: String (unique)
+├─ password?: String (select: false)
+├─ role: String (enum: "user", "admin")
+├─ provider: String (enum: "local", "google")
+├─ providerId?: String
+├─ avatar?: { public_id, url, size }
+├─ isEmailVerified: Boolean
+├─ lastLoginAt?: Date
+├─ failedLoginAttempts: Number (default: 0)
+├─ lockUntil?: Date
+├─ isDeleted: Boolean
+├─ deletedAt?: Date
+├─ reActivateAvailableAt?: Date
+├─ createdAt: Date
+├─ updatedAt: Date
+│
+└─ Indexes:
+   ├─ email (unique)
+   ├─ provider, providerId
+   ├─ role
+   └─ isDeleted
+
+refreshTokens
+├─ _id: ObjectId
+├─ userId: ObjectId (ref: users)
+├─ tokenHash: String
+├─ expiresAt: Date
+├─ isRevoked: Boolean
+├─ revokedAt?: Date
+├─ replacedByTokenHash?: String
+├─ createdAt: Date
+│
+└─ Indexes:
+   ├─ tokenHash (for quick lookup)
+   ├─ userId
+   └─ expiresAt (for TTL cleanup)
+
+otps
+├─ _id: ObjectId
+├─ email: String
+├─ otpType: String (enum: "SIGNIN", "PASSWORD_RESET")
+├─ code: String (hashed)
+├─ expiresAt: Date
+├─ isUsed: Boolean
+├─ usedAt?: Date
+├─ createdAt: Date
+│
+└─ Indexes:
+   ├─ email, otpType
+   └─ expiresAt (for TTL cleanup)
+```
+
+### Mongoose Connection Management
+
+```
+connectDB()
+├─ Called on server startup
+├─ Establishes MongoDB connection pool
+├─ Connection pooling (default: 10 connections)
+├─ Handles reconnection on network failure
+└─ Exits process if connection fails
+
+On Graceful Shutdown:
+├─ Stop accepting new requests
+├─ Close MongoDB connection
+│  └─ Waits for in-flight operations
+├─ Close Redis connection
+├─ Stop scheduled jobs
+└─ Exit process
+```
+
+## Redis Architecture
+
+### Redis Usage
+
+```
+Redis Client
+├─ URL: redis://localhost:6379
+├─ Auto-reconnect enabled
+└─ Used for:
+    ├─ Rate limit state (key: ip_endpoint)
+    ├─ Session storage (optional)
+    └─ Token blacklist (optional)
+
+Connection:
+├─ Single connection instance
+├─ Shared across app
+└─ Closed on graceful shutdown
+```
+
+### Potential Redis Keys (Future)
+
+```
+Examples (not currently implemented):
+├─ rate_limit:{ip} → request count
+├─ session:{sessionId} → user data
+├─ token_blacklist:{tokenHash} → revoked tokens
+└─ TTL auto-cleanup on expiry
+```
+
+## External Service Integrations
+
+### Email (Nodemailer)
+
+```
+Configuration:
+├─ SMTP_HOST: smtp.gmail.com (or custom)
+├─ SMTP_PORT: 587
+├─ SMTP_USER: your-email@gmail.com
+├─ SMTP_PASS: app-password (not regular password)
+└─ EMAIL_FROM: noreply@example.com
+
+Flow:
+1. Service generates OTP
+2. Render EJS template (signin-otp.ejs)
+3. Pass variables: {{ otp_code }}, {{ expiry_time }}, etc.
+4. Create nodemailer transport
+5. Send email with rendered HTML
+6. Log success/failure
+
+Template Example:
+├─ HTML email with OTP code
+├─ Expiry information
+├─ Brand styling
+└─ Unsubscribe link (if needed)
+```
+
+### File Upload (Cloudinary)
+
+```
+Configuration:
+├─ CLOUDINARY_CLOUD_NAME: your-cloud-name
+├─ CLOUDINARY_API_KEY: api-key
+├─ CLOUDINARY_API_SECRET: api-secret
+└─ Public vs Secure URL
+
+Upload Flow:
+1. Client sends file in multipart/form-data
+2. Multer middleware stores in memory (buffer)
+3. Upload service calls Cloudinary API
+4. Cloudinary returns: public_id, url, size
+5. Store metadata in MongoDB User.avatar
+6. Return URL to client
+
+Delete Flow:
+1. Get public_id from User.avatar
+2. Call Cloudinary destroy API
+3. Update User.avatar to null
+4. Return 200 OK
+
+Security:
+├─ Cloudinary handles HTTPS
+├─ API secret never exposed to client
+├─ Signed URLs for secure delivery (if needed)
+└─ Delete requires authentication
+```
+
+### OAuth2 (Passport.js)
+
+```
+Configuration:
+├─ GOOGLE_CLIENT_ID: your-client-id
+├─ GOOGLE_CLIENT_SECRET: your-secret
+└─ GOOGLE_REDIRECT_URI: http://localhost:3000/api/oauth/google/callback
+
+Strategy Setup:
+1. Passport.js GoogleStrategy configured
+2. Verifies Google tokens
+3. Calls verify callback with profile
+4. Returns or creates user
+
+Token Exchange:
+1. Frontend requests: GET /api/oauth/google/url
+2. Returns Google authorization URL
+3. User authorizes on Google consent screen
+4. Redirected to: /api/oauth/google/callback?code=...
+5. Backend exchanges code for tokens
+6. Fetches user profile
+7. Syncs user to DB
+8. Issues JWT tokens
+9. Sets secure cookies
+10. Redirects to frontend with tokens
+
+Trust Model:
+├─ Client secret kept server-side
+├─ Tokens validated server-side
+├─ User never sees OAuth tokens directly
+└─ Frontend receives JWT tokens
+```
+
+## Background Jobs
+
+### Job System
+
+```
+Initialization:
+├─ initJobs() called after server starts
+├─ Loads all job definitions
+└─ Schedules cron tasks
+
+Job Example (System Monitor):
+├─ Schedule: every 5 minutes (cron: "*/5 * * * *")
+├─ Task: log memory usage, uptime
+├─ Error handling: log and continue
+└─ No database persistence
+
+Structure:
+const job = {
+  name: "system-monitor",
+  schedule: "*/5 * * * *",  // cron format
+  execute: async () => {
+    // Do work
+    // Catch errors, don't throw
+  }
 };
 
-// model: Database schema
-export interface IUser extends Document {
-  email: string;
-  name: string;
-}
+Extensibility:
+├─ Add new jobs to shared/jobs/
+├─ Import in shared/jobs/index.ts
+├─ Include in initJobs()
+└─ No restart needed (restart server to pick up)
 
-const userSchema = new Schema<IUser>({ ... });
-export const User = model<IUser>('User', userSchema);
+On Graceful Shutdown:
+├─ Stop accepting new work
+├─ Wait for in-flight jobs
+├─ Close connections
+└─ Exit process
 ```
 
-## Error Handling Flow
+## Security Model
+
+### Authentication Flow
+
+```
+Protected Route
+    ↓
+verifyAuth Middleware
+├─ Extract token from Authorization or cookies
+├─ Verify JWT signature
+├─ Check token not expired
+├─ Extract userId & role
+├─ Attach to req.user
+└─ Call next() to proceed
+
+If token missing/invalid:
+└─ Throw ApiError.unauthorized()
+```
+
+### Authorization Flow
+
+```
+Protected Route (admin-only)
+    ↓
+verifyAuth Middleware
+    ↓
+authorizeRole Middleware
+├─ Check req.user.role === "admin"
+├─ If match: call next()
+└─ If not match: throw ApiError.forbidden()
+```
+
+### Password Security
+
+```
+Registration:
+1. User submits plaintext password
+2. Hash with argon2 (slow, memory-hard)
+3. Store hash in DB (never plaintext)
+4. Discard plaintext
+
+Login:
+1. User submits plaintext password
+2. Retrieve user.password from DB
+3. Compare plaintext with stored hash
+4. If match: proceed to OTP
+5. If not match: increment failedLoginAttempts
+```
+
+### Account Lockout
+
+```
+Failed Login Tracking:
+1. User enters wrong password
+2. Increment failedLoginAttempts counter
+3. If failedLoginAttempts >= 5:
+   └─ Set lockUntil = now + 15 minutes
+4. Subsequent login attempts while locked:
+   └─ Throw ApiError.forbidden("Account locked")
+
+After Lockout Expires:
+├─ lockUntil in the past
+├─ Reset failedLoginAttempts to 0
+└─ User can attempt login again
+
+Constants:
+├─ LOGIN_MAX_ATTEMPTS = 5
+└─ LOCK_TIME_MS = 15 * 60 * 1000
+```
+
+## Error Handling Architecture
+
+### Error Classification
+
+```
+Operational Errors (Expected, handled gracefully):
+├─ Validation errors (Zod)
+├─ Not found errors (user doesn't exist)
+├─ Conflict errors (email already exists)
+├─ Unauthorized (invalid token)
+├─ Forbidden (insufficient permissions)
+├─ Rate limit (too many requests)
+└─ User-facing status code + message
+
+Programming Errors (Unexpected, should not happen):
+├─ TypeError (accessing property of null)
+├─ Logic errors (assertion failures)
+├─ Database driver errors
+└─ Status: 500 Internal Server Error
+    └─ Logged for investigation
+    └─ Generic "Internal Server Error" to client
+```
 
 ### Error Propagation
 
 ```
-Throw Error
+Service throws ApiError
     ↓
-    ├── Is it in an AsyncHandler?
-    │   ├── YES: Promise.catch() → forward to next()
-    │   └── NO: Must have try-catch
+Controller doesn't catch (let it bubble)
     ↓
-Express Error Handler Middleware
-    ├── Check: instanceof ApiError?
-    │   ├── YES: Use statusCode, format as ApiResponse
-    │   └── NO: Treat as 500 Internal Server Error
-    ├── Log error (error level or higher)
-    ├── Set response headers (Content-Type: application/json)
-    ├── Include stack trace (dev only)
-    └── Send JSON response
+asyncHandler catches and passes to next(error)
+    ↓
+Express errorHandler middleware
+├─ Check if ApiError instance
+├─ If yes: return statusCode + message
+├─ If no: log, return 500
+└─ Format as JSON response
 ```
 
-### Error Response Format
+## Deployment Readiness
 
-**Operational Error (ApiError)**:
-
-```json
-{
-  "success": false,
-  "message": "User not found",
-  "statusCode": 404,
-  "errors": null
-}
-```
-
-**Validation Error (Zod)**:
-
-```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "statusCode": 400,
-  "errors": {
-    "fieldErrors": {
-      "email": ["Invalid email format"]
-    }
-  }
-}
-```
-
-**Unhandled Error**:
-
-```json
-{
-  "success": false,
-  "message": "Internal Server Error",
-  "statusCode": 500,
-  "errors": null,
-  "stack": "..." // dev only
-}
-```
-
-## Cache & Session Architecture
-
-### Redis Connection Model
+### Environment-Aware Behavior
 
 ```
-server.ts startup
-    ↓
-connectDB() called (MongoDB)
-    ├── Mongoose.connect(DATABASE_URL)
-    └── Wait for connection
-    ↓
-initRedis() called (Redis)
-    ├── Redis.createClient(REDIS_URL)
-    ├── Set cache helpers (setCache, getCache, deleteCache)
-    └── TTL support enabled
-    ↓
-Express server starts listening
-    ├── Can use Redis for: session storage, OTP caching, rate limits, auth tokens
-    └── ... request processing ...
-    ↓
-Process termination (SIGTERM/SIGINT)
-    ↓
-configureGracefulShutdown()
-    ├── Close HTTP server
-    ├── Close MongoDB connection
-    ├── Close Redis connection
-    └── Exit process (code 0)
+Development (NODE_ENV=development):
+├─ Logging: pretty-printed to console
+├─ Morgan format: "dev" (colored, abbreviated)
+├─ Source maps: included
+├─ API docs: available at /api/docs
+
+Production (NODE_ENV=production):
+├─ Logging: JSON format to stdout
+├─ Morgan format: "combined" (detailed logs)
+├─ Source maps: generated but not in bundle
+├─ API docs: still available (or disabled)
+├─ Rate limits: stricter thresholds
+└─ HTTPS: enforced via env checks
 ```
 
-### Cache Helper Functions
-
-| Function                    | Purpose                       | Returns              |
-| --------------------------- | ----------------------------- | -------------------- |
-| `setCache(key, value, ttl)` | Store value with optional TTL | Promise\<void\>      |
-| `getCache(key)`             | Retrieve cached value         | Promise\<T \| null\> |
-| `deleteCache(key)`          | Remove cache entry            | Promise\<void\>      |
-
-**Usage in Services**:
-
-- OTP storage with 5-10 min TTL
-- Session tokens with 24h TTL
-- Email template cache with 1h TTL
-- Rate limit counters with 1min TTL
-
-## Database Architecture
-
-### Connection Model
+### Graceful Shutdown
 
 ```
-server.ts startup
+Process receives SIGTERM
     ↓
-connectDB() called
-    ├── Mongoose.connect(DATABASE_URL)
-    ├── Wait for connection
-    ├── Attach event listeners
-    │   ├── 'connected' → log info
-    │   ├── 'disconnected' → log warn
-    │   └── 'error' → exit process
-    └── Return promise
-    ↓
-Express server starts listening
-    ↓
-... request processing ...
-    ↓
-Process termination (SIGTERM/SIGINT)
-    ↓
-configureGracefulShutdown()
-    ├── Close HTTP server (no new connections)
-    ├── Close MongoDB connection
-    └── Exit process (code 0)
+configureGracefulShutdown
+├─ Set server to not accept new connections
+├─ Wait for in-flight requests (timeout: 30s)
+├─ Close MongoDB connection
+├─ Close Redis connection
+├─ Stop background jobs
+└─ Exit process (code 0)
+
+Benefits:
+├─ No dropped requests
+├─ Clean database cleanup
+├─ Proper connection closure
+└─ Orchestrators (Docker, k8s) can schedule restarts
 ```
 
-### Mongoose Model Pattern
+## Scalability Considerations
 
-```typescript
-// 1. Define TypeScript interface
-export interface IUser extends Document {
-  email: string;
-  name: string;
-  createdAt: Date;
-}
-
-// 2. Define Mongoose schema
-const userSchema = new Schema<IUser>({
-  email: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
-});
-
-// 3. Create and export model
-export const User = model<IUser>("User", userSchema);
-
-// 4. Use in controller
-const user = await User.findById(id);
-const newUser = await User.create({ email, name });
-await User.findByIdAndUpdate(id, updates);
-```
-
-## Logging Architecture
-
-### Logger Configuration
+### Horizontal Scaling Ready
 
 ```
-┌─────────────────────────────────────────┐
-│         Pino Logger Instance            │
-├─────────────────────────────────────────┤
-│ Transport Selection (based on NODE_ENV) │
-│                                         │
-│ Development:                            │
-│ └── pino-pretty (colorized output)      │
-│                                         │
-│ Production:                             │
-│ └── JSON (newline-delimited for parsing)│
-└─────────────────────────────────────────┘
-        ↓
-├── logger.info()     → Normal operations
-├── logger.debug()    → Troubleshooting
-├── logger.warn()     → Recoverable issues
-├── logger.error()    → Handled errors
-└── logger.fatal()    → Process termination
+Stateless Design:
+├─ No in-memory user state
+├─ No in-memory session storage
+├─ Redis for distributed session (if needed)
+└─ Multiple instances can handle requests
+
+Load Balancer:
+├─ Routes requests to multiple instances
+├─ Sticky sessions optional (not required)
+└─ Each instance independent
+
+Database:
+├─ MongoDB connection pooling per instance
+├─ Enough pools for expected load
+└─ Consider MongoDB sharding for very large data
+
+External Services:
+├─ Email: handled by Nodemailer (queuing optional)
+├─ Cloudinary: handled by API calls
+├─ OAuth: handled by Passport
+└─ All stateless
 ```
 
-### Logging Patterns
-
-```typescript
-// Startup
-logger.info(`Server running at http://localhost:${port}`);
-
-// Business logic
-logger.info("User created", { userId: user.id, email: user.email });
-
-// Troubleshooting
-logger.debug("Database query", { query, duration: 45 });
-
-// Issues
-logger.warn("Slow query detected", { duration: 250 });
-
-// Errors
-logger.error(error, "Failed to create user");
-
-// Critical
-logger.fatal(error, "Database connection failed");
-```
-
-## Environment & Configuration
-
-### Configuration Loading
+### Vertical Scaling Considerations
 
 ```
-Start Process
-    ↓
-dotenv-flow loads .env files
-    ├── .env (git tracked, defaults)
-    ├── .env.local (git ignored, local overrides)
-    ├── .env.{NODE_ENV} (environment-specific)
-    └── .env.{NODE_ENV}.local (local environment overrides)
-    ↓
-Zod schema validates all env vars
-    ├── Type checks
-    ├── Format validation
-    ├── Required vs optional
-    └── Default values
-    ↓
-If validation fails:
-    ├── Print error details
-    └── Exit process (code 1)
-    ↓
-env object (frozen, readonly)
-    └── Type-safe access throughout app
+Single Instance Optimization:
+├─ Connection pooling (Mongoose, Redis)
+├─ Rate limiting to prevent overload
+├─ Async operations don't block threads
+├─ Node.js event loop handles concurrency
+└─ Monitor memory usage and GC pauses
 ```
 
-### Env Validation in Code
+## Monitoring & Observability
 
-```typescript
-// src/shared/configs/env.ts
-const result = envSchema.safeParse(process.env);
-
-if (!result.success) {
-  console.error("❌ Invalid environment configuration");
-  console.error(z.prettifyError(result.error));
-  process.exit(1);
-}
-
-// Only valid env vars are exported
-export const env = Object.freeze(result.data);
-```
-
-## Security Architecture
-
-### Security Layers
+### Logging Points
 
 ```
-HTTP Request
-    ↓
-configureSecurityHeaders() [FIRST MIDDLEWARE]
-    ↓
-Helmet Middleware
-├── Content-Security-Policy
-├── X-Frame-Options (clickjacking protection)
-├── X-Content-Type-Options (MIME sniffing protection)
-├── Strict-Transport-Security (HTTPS)
-└── Other 14+ security headers
-    ↓
-CORS Middleware
-├── Origin validation (env.CORS_ORIGIN)
-├── Allowed methods (GET, POST, PUT, DELETE, PATCH, OPTIONS)
-├── Allowed headers (Content-Type, Authorization, X-Requested-With)
-└── Credentials support (httpOnly cookies)
-    ↓
-Custom Security Headers
-├── X-Content-Type-Options: nosniff
-├── X-Frame-Options: DENY
-└── X-XSS-Protection: 1; mode=block
-    ↓
-Cookie Parser
-├── Signed cookie support
-└── httpOnly flag protection
-    ↓
-Input Validation (Zod)
-├── Type checking
-├── Format validation
-├── Range validation
-└── Custom rules
-    ↓
-Controller Logic
-├── Authorization checks
-├── Business logic validation
-└── Error handling
+Security Events:
+├─ Failed login attempts
+├─ Account lockouts
+├─ Authorization failures
+├─ OTP verification failures
+
+Integration Events:
+├─ Email sent/failed
+├─ File upload success/failure
+├─ OAuth callback completion
+└─ Redis connection status
+
+System Events:
+├─ Server startup/shutdown
+├─ Database connections
+├─ Job execution
+└─ Request latency (via Morgan)
 ```
 
-### CORS Configuration
-
-```typescript
-// Configured in configureSecurityHeaders() at security-header.ts
-cors({
-  origin: env.CORS_ORIGIN || "*", // Single origin or wildcard
-  credentials: true, // Allow cookies
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
-});
-```
-
-## Graceful Shutdown Sequence
+### Health Check Endpoint
 
 ```
-Process receives SIGTERM/SIGINT
-    ↓
-Signal Handler Triggered
-    ↓
-1. Log shutdown initiation
-    logger.info('Shutting down gracefully...')
-    ↓
-2. Close HTTP Server
-    server.close()
-    ├── No new connections accepted
-    ├── Existing connections drain
-    └── Keep-Alive connections closed
-    ↓
-3. Close MongoDB Connection
-    mongoose.connection.close()
-    ├── Flush pending operations
-    └── Release connection pool
-    ↓
-4. Close Redis Connection (if initialized)
-    redisClient.disconnect()
-    ├── Flush pending cache operations
-    └── Release Redis connection
-    ↓
-5. Exit Process
-    process.exit(0)
-    └── Code 0 = success
-
-    ↓ OR (timeout after 10s) ↓
-
-5b. Force Exit
-    process.exit(1)
-    └── Code 1 = error
+GET /api/health
+├─ Checks MongoDB connection
+├─ Checks Redis connection
+├─ Returns: { status, timestamp, uptime, checks }
+└─ Used by load balancers, monitoring tools
 ```
 
-## Swagger Documentation Architecture
-
-### Swagger Setup
+### Metrics to Monitor
 
 ```
-app.ts startup
-    ↓
-setupSwagger() called (dev only)
-    ├── Check NODE_ENV === 'development'
-    │   ├── YES: Set up Swagger UI
-    │   └── NO: Skip (disabled in production)
-    ├── Mount swagger-ui-express at /api/docs
-    ├── Load swagger.json from src/docs/
-    └── Configure UI options
-    ↓
-Generate Swagger spec:
-    pnpm docs:gen
-    ├── Runs swagger.config.ts
-    ├── Scans route files for JSDoc comments
-    ├── Generates src/docs/swagger.json
-    └── Ready for /api/docs endpoint
+Application:
+├─ Request latency (p50, p95, p99)
+├─ Error rate by endpoint
+├─ Authentication success/failure rate
+├─ OTP delivery success rate
+└─ File upload throughput
+
+Infrastructure:
+├─ Memory usage (Node process)
+├─ CPU usage
+├─ Database query latency
+├─ Redis latency
+└─ Network I/O
 ```
-
-## Component Dependency Tree
-
-```
-app.ts (Express setup)
-├── routes/index.ts
-│   ├── modules/health/health.routes.ts
-│   ├── modules/oauth/oauth.routes.ts (OAuth)
-│   │   └── modules/oauth/oauth.controller.ts
-│   │       └── modules/oauth/oauth.service.ts
-│   ├── modules/auth/auth.routes.ts
-│   │   └── modules/auth/auth.controller.ts
-│   └── (other features...)
-├── shared/configs/swagger.ts
-├── shared/configs/passport.ts (OAuth)
-│   └── modules/oauth/oauth.controller.ts
-├── shared/middlewares/error-handler.ts
-│   ├── shared/errors/api-error.ts
-│   ├── shared/utils/api-response.ts
-│   ├── shared/utils/logger.ts
-│   └── shared/constants/status-codes.ts
-└── shared/middlewares/not-found-handler.ts
-    └── shared/errors/api-error.ts
-
-server.ts (Entry point)
-├── app.ts (see above)
-├── db/db.ts (MongoDB)
-│   └── shared/utils/logger.ts
-├── shared/configs/env.ts
-├── shared/configs/redis.ts (NEW - Redis)
-├── shared/utils/render-template.ts (NEW - EJS)
-│   └── src/templates/*.ejs
-└── shared/utils/shutdown.ts
-    └── shared/utils/logger.ts
-```
-
-## Performance Characteristics
-
-### Request Lifecycle Timeline
-
-```
-Request Entry         ━━━━━━━━━━━━━━━  0ms
-Middleware stack      ━━━━━━━  2-5ms
-Route matching        ━━━  1-2ms
-Controller logic      ━━━━━━━━━━━  10-50ms
-  ├── Validation       ━  1-2ms
-  ├── DB query         ━━━━━━  5-30ms
-  └── Response format  ━  1-2ms
-Response sent         ━━━━━━━━━━━━━━━  15-60ms
-```
-
-**Total**: <100ms for typical operations
-
-### Memory & Scalability
-
-| Component          | Typical Memory | Scalability             |
-| ------------------ | -------------- | ----------------------- |
-| Node process       | 50-100MB       | Scales with connections |
-| MongoDB connection | 10-20MB        | Connection pooling      |
-| Logger buffer      | <1MB           | Minimal                 |
-| Middleware stack   | <1MB           | Fixed                   |
-| Route cache        | <2MB           | Depends on routes       |
-
-## Related Documentation
-
-- [Project Overview & PDR](./project-overview-pdr.md) — Requirements, roadmap, stack
-- [Code Standards](./code-standards.md) — Naming conventions, patterns, best practices
-- [Codebase Summary](./codebase-summary.md) — File tree, exports, LOC breakdown

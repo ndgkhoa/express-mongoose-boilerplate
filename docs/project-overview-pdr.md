@@ -1,346 +1,318 @@
-# Project Overview & Product Development Requirements
+# Project Overview & PDR
 
-## Project Identity
+## Project Summary
 
-**Name**: servercn-mongoose-starter  
-**Version**: 1.1.0 (Phase 2 In Progress)  
-**Type**: Express.js API Starter Template  
-**Status**: Active Development  
-**Last Updated**: 2026-04-07  
-**Repository**: https://github.com/yourusername/servercn-mongoose-starter
+**Name:** express-mongoose-boilerplate  
+**Version:** 1.0.0  
+**Type:** Production-ready Node.js REST API boilerplate  
+**Description:** Enterprise-grade backend foundation built with Express 5, TypeScript, MongoDB, and modern best practices. Includes authentication, authorization, file uploads, email delivery, background jobs, and comprehensive security middleware.
 
-## Purpose
+## Target Audience
 
-`servercn-mongoose-starter` is a production-ready Express.js + MongoDB starter template designed to accelerate backend API development. It provides:
+- Backend developers building REST APIs with Node.js/Express
+- Teams adopting TypeScript for better code quality
+- Projects requiring multi-provider authentication
+- Applications needing robust security patterns (rate limiting, account locking, OTP verification)
+- Developers seeking modular, maintainable server architecture
 
-- Battle-tested project structure with feature-based modular architecture
-- Pre-configured TypeScript with strict mode and path aliases
-- Security best practices (Helmet, CORS, input validation)
-- Structured error handling and API response normalization
-- Environment validation at startup using Zod
-- Graceful shutdown handling
-- Development tools (Swagger docs, Morgan HTTP logging, Pino structured logging)
-- Code quality enforcement (ESLint, Prettier, Husky pre-commit hooks, commitlint)
+## Business Goals
 
-**Target Audience**: Backend developers building REST APIs with Node.js/Express + MongoDB  
-**Deployment Target**: Docker, Kubernetes, or traditional VPS environments
+1. **Reduce Time-to-Market:** Eliminate repetitive boilerplate for authentication, middleware, and configuration
+2. **Ensure Security:** Implement production-grade security patterns (password hashing, rate limiting, CSRF protection, account lockout)
+3. **Maintain Quality:** Enforce code standards via linting, formatting, and commit hooks
+4. **Enable Scalability:** Use Redis for sessions/caching, MongoDB for flexible data models
+5. **Facilitate Maintenance:** Clear module structure, comprehensive error handling, and self-documenting code
+
+## Key Features
+
+### Authentication & Authorization
+
+- **Multi-method login:** OTP-based sign-in (SMS/email verification flow)
+- **Account security:** Failed login tracking, account locking (configurable attempts/duration)
+- **Password management:** Secure hashing (argon2), reset flow via OTP
+- **Token system:** Access tokens (short-lived) + refresh tokens (long-lived) with rotation detection
+- **Multi-provider support:** Local (email/password), Google OAuth2 (expandable)
+- **Role-based access:** Admin and user roles with route protection middleware
+
+### User Management
+
+- **Profile management:** Name, email, avatar (Cloudinary-backed)
+- **Account lifecycle:** Registration, email verification, account deletion, reactivation
+- **Audit trail:** lastLoginAt, createdAt, updatedAt timestamps
+- **Avatar management:** Cloudinary integration for image uploads
+
+### Security Features
+
+- **Brute-force protection:** Account locking after N failed attempts
+- **Rate limiting:** Per-route and global request throttling
+- **CORS & security headers:** Helmet.js, configurable CORS origins
+- **Cookie management:** Secure token storage with httpOnly, sameSite, secure flags
+- **Password hashing:** Argon2 password hashing with salt
+- **OTP validation:** Time-based, single-use OTP for critical operations
+
+### Email Delivery
+
+- **Nodemailer integration:** SMTP-based email sending
+- **EJS templates:** Dynamic email templates (sign-in OTP, password reset)
+- **Template rendering:** Secure variable interpolation
+- **Gmail/custom SMTP support:** Configurable via environment
+
+### File Uploads
+
+- **Cloudinary integration:** Secure cloud storage for user avatars
+- **Multer middleware:** Memory-based file handling before upload
+- **File deletion:** Automatic cleanup of old avatars
+
+### Background Jobs
+
+- **Cron-based execution:** node-cron scheduler
+- **Job examples:** System monitoring, scheduled tasks
+- **Extensible:** Simple job registration pattern for custom tasks
+- **Graceful shutdown:** Jobs cleaned up on server termination
+
+### Developer Experience
+
+- **API Documentation:** Swagger/OpenAPI at `/api/docs` (auto-generated)
+- **Logging:** Pino logger with pretty-printing in development
+- **Validation:** Zod schemas for request/body validation
+- **TypeScript:** Strict mode, source maps, full type safety
+- **Code quality:** ESLint, Prettier, commitlint, husky pre-commit hooks
+- **Path aliases:** `@/` prefix for clean imports (e.g., `@/modules/auth`)
 
 ## Technology Stack
 
-| Layer            | Technology                       | Version    | Purpose                               |
-| ---------------- | -------------------------------- | ---------- | ------------------------------------- |
-| **Runtime**      | Node.js + ESM                    | Latest LTS | JavaScript runtime with ES modules    |
-| **Language**     | TypeScript                       | 6.0+       | Type safety, strict mode enabled      |
-| **Framework**    | Express                          | 5.x        | HTTP server & routing                 |
-| **Auth**         | Passport.js                      | 0.7.0      | OAuth strategy framework              |
-| **Database**     | MongoDB + Mongoose               | 9.x        | NoSQL database & ODM                  |
-| **Cache**        | Redis                            | 5.11.0     | Session storage & caching layer       |
-| **Validation**   | Zod                              | 4.x        | Runtime schema & env validation       |
-| **Logging**      | Pino + pino-pretty               | 10.x       | Structured logging (dev/prod)         |
-| **Templates**    | EJS                              | 5.0.1      | Dynamic email template rendering      |
-| **Email**        | Nodemailer                       | Latest     | SMTP email sending                    |
-| **Security**     | Helmet, CORS                     | Latest     | HTTP headers, cross-origin requests   |
-| **HTTP Logging** | Morgan                           | 1.10+      | Request/response logging              |
-| **API Docs**     | swagger-autogen + UI             | 2.23+      | Auto-generated OpenAPI docs           |
-| **Build**        | TypeScript Compiler + tsc-alias  | 6.0+       | Compilation & path resolution         |
-| **Dev Runtime**  | tsx                              | 4.21+      | Hot-reload development server         |
-| **Code Quality** | ESLint + Prettier                | Latest     | Linting & code formatting             |
-| **Git Hooks**    | Husky + lint-staged + commitlint | Latest     | Pre-commit checks & commit validation |
+| Layer               | Technology                      | Version             |
+| ------------------- | ------------------------------- | ------------------- |
+| **Runtime**         | Node.js                         | 20+ (ES2022 target) |
+| **Framework**       | Express                         | 5.2.1               |
+| **Language**        | TypeScript                      | 6.0.2               |
+| **Database**        | MongoDB + Mongoose              | 9.3.3               |
+| **Cache/Session**   | Redis                           | 5.11.0              |
+| **Auth**            | Passport.js + JWT               | 0.7.0               |
+| **Hashing**         | Argon2                          | 0.44.0              |
+| **Email**           | Nodemailer                      | 8.0.4               |
+| **File Storage**    | Cloudinary                      | 2.9.0               |
+| **Validation**      | Zod                             | 4.3.6               |
+| **Logging**         | Pino                            | 10.3.1              |
+| **Scheduling**      | node-cron                       | 4.2.1               |
+| **Security**        | Helmet                          | 8.1.0               |
+| **Build**           | TypeScript Compiler + tsc-alias | 6.0.2               |
+| **Runtime (dev)**   | tsx                             | 4.21.0              |
+| **Package Manager** | pnpm                            | latest              |
 
-## Core Architecture
+## API Overview
 
-### Architectural Style
-
-**Feature-Based Modular Architecture** — Code is organized by business feature, not by technical layer.
+### Core Routes
 
 ```
-src/
-├── modules/          # Feature modules (user, health, auth, etc.)
-│   ├── health/      # Health check feature
-│   ├── user/        # User management feature
-│   └── ...
-├── shared/          # Shared utilities, middleware, configs
-│   ├── configs/     # Environment, Swagger setup
-│   ├── errors/      # Error classes & handling
-│   ├── middlewares/ # Express middleware
-│   ├── constants/   # Status codes, enums
-│   └── utils/       # Helper functions & classes
-├── routes/          # Route aggregator
-├── db/              # Database connection
-├── app.ts           # Express app setup
-└── server.ts        # Entry point
+GET  /                          → Redirect to /api/health
+GET  /api/health                → Health check
+GET  /api/docs                  → Swagger API documentation
 ```
 
-### API Path Structure
+### Authentication Routes (`/api/auth`)
 
-Routes are organized by feature modules (health, user, etc.) with no version prefix. All routes are accessible directly from root (e.g., `/health`, `/health/detailed`).
+```
+POST /api/auth/register         → Register new user (email, password, name, role)
+POST /api/auth/login            → Initiate login (send OTP to email)
+POST /api/auth/verify-otp       → Verify OTP and issue JWT tokens
+POST /api/auth/refresh-token    → Rotate refresh token, get new access token
+POST /api/auth/logout           → Invalidate tokens (revoke refresh token)
+POST /api/auth/forgot-password  → Initiate password reset (send OTP)
+POST /api/auth/reset-password   → Reset password via OTP verification
+DELETE /api/auth/account        → Delete user account (soft delete)
+POST /api/auth/reactivate       → Reactivate deleted account
+```
 
-## Environment Configuration
+### OAuth Routes (`/api/oauth`)
 
-### Currently Validated Variables (v1.1.0)
+```
+GET  /api/oauth/google/url      → Get Google OAuth2 authorization URL
+GET  /api/oauth/google/callback → OAuth2 callback (initiated from frontend)
+```
 
-| Variable               | Type   | Default                                     | Description                                                                  |
-| ---------------------- | ------ | ------------------------------------------- | ---------------------------------------------------------------------------- |
-| `NODE_ENV`             | enum   | development                                 | Runtime environment: `development` \| `test` \| `production`                 |
-| `PORT`                 | number | 3000                                        | Server port                                                                  |
-| `DATABASE_URL`         | URL    | -                                           | MongoDB connection string (e.g., mongodb://localhost:27017/dbname)           |
-| `REDIS_URL`            | URL    | redis://localhost:6379                      | Redis connection URL (NEW)                                                   |
-| `CORS_ORIGIN`          | URL    | http://localhost:3000                       | Allowed CORS origin for frontend requests                                    |
-| `LOG_LEVEL`            | enum   | info                                        | Pino log level: `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` |
-| `GOOGLE_CLIENT_ID`     | string | -                                           | Google OAuth 2.0 Client ID (NEW)                                             |
-| `GOOGLE_CLIENT_SECRET` | string | -                                           | Google OAuth 2.0 Client Secret (NEW)                                         |
-| `GOOGLE_REDIRECT_URI`  | URL    | http://localhost:3000/oauth/google/callback | Google OAuth callback URL (NEW)                                              |
+### User Routes (`/api/users`)
 
-### Future Variables (Phase 2+, currently commented in .env.example)
+```
+GET    /api/users/me            → Get authenticated user profile
+PATCH  /api/users/me            → Update profile (name, avatar)
+DELETE /api/users/me/avatar     → Remove user avatar
+GET    /api/users/:id           → Get user by ID (admin only)
+DELETE /api/users/:id           → Delete user account (admin only)
+```
 
-| Variable                       | Type   | Purpose                   | Status          |
-| ------------------------------ | ------ | ------------------------- | --------------- |
-| `JWT_ACCESS_SECRET`            | string | JWT access token signing  | Phase 2 Pending |
-| `JWT_REFRESH_SECRET`           | string | JWT refresh token signing | Phase 2 Pending |
-| `SMTP_HOST`, `SMTP_PORT`, etc. | string | Email server config       | Phase 2 Pending |
-| `CLOUDINARY_*`                 | string | File uploads (Phase 3)    | Planned         |
-| `GITHUB_CLIENT_ID`, etc.       | string | GitHub OAuth integration  | Phase 2 Pending |
+### Upload Routes (`/api/upload`)
 
-**Setup**: Create `.env.development.local` and `.env.production.local` files. The project uses `dotenv-flow` to load environment variables with proper precedence.
+```
+POST /api/upload/avatar         → Upload user avatar (returns url, public_id)
+```
 
-**Validation**: All env vars are validated at startup using Zod schema in `src/shared/configs/env.ts`. Invalid config exits the process immediately with error details.
+## Data Models
 
-## Package Scripts
+### User Model
 
-| Script         | Command                                                      | Purpose                                  |
-| -------------- | ------------------------------------------------------------ | ---------------------------------------- |
-| `dev`          | `cross-env NODE_ENV=development npx tsx watch src/server.ts` | Development with hot reload              |
-| `build`        | `rm -rf dist && tsc && tsc-alias`                            | TypeScript compilation & path resolution |
-| `start`        | `cross-env NODE_ENV=production node dist/server.js`          | Production server (requires build first) |
-| `typecheck`    | `tsc --noEmit`                                               | Check TypeScript without emitting        |
-| `lint:check`   | `eslint .`                                                   | Check linting violations                 |
-| `lint:fix`     | `eslint . --fix`                                             | Auto-fix linting violations              |
-| `format:check` | `prettier . --check`                                         | Check code formatting                    |
-| `format:fix`   | `prettier . --write`                                         | Auto-format code                         |
-| `docs:gen`     | `npx tsx swagger.config.ts`                                  | Generate Swagger/OpenAPI documentation   |
-| `prepare`      | `husky`                                                      | Initialize Husky pre-commit hooks        |
-
-## Current API Endpoints
-
-### Health Check Endpoints
-
-| Method | Path               | Status | Response                                                           |
-| ------ | ------------------ | ------ | ------------------------------------------------------------------ |
-| GET    | `/health`          | 200 OK | `{ status, timestamp, uptime }`                                    |
-| GET    | `/health/detailed` | 200 OK | `{ status, timestamp, uptime, environment, version, memory, cpu }` |
-
-### OAuth Endpoints (v1.1.0 - NEW)
-
-| Method | Path                     | Status | Response                             |
-| ------ | ------------------------ | ------ | ------------------------------------ |
-| GET    | `/oauth/google`          | 302    | Redirects to Google consent          |
-| GET    | `/oauth/google/callback` | 302    | Redirects to frontend + sets cookies |
-
-### Auth Endpoints (v1.1.0 - Partial)
-
-| Method | Path               | Status | Implementation Status             |
-| ------ | ------------------ | ------ | --------------------------------- |
-| POST   | `/auth/send-otp`   | 200 OK | OTP + Email template rendering ✅ |
-| POST   | `/auth/verify-otp` | 200 OK | OTP verification with Redis ✅    |
-| POST   | `/auth/register`   | -      | Pending                           |
-| POST   | `/auth/login`      | -      | Pending                           |
-
-**Response Format** (ApiResponse):
-
-```json
+```typescript
 {
-  "success": true,
-  "message": "Service is healthy",
-  "statusCode": 200,
-  "data": {
-    "status": "healthy",
-    "timestamp": "2026-04-07T14:30:00.000Z",
-    "uptime": 45.123
-  }
+  _id: ObjectId
+  name: String (required, trimmed)
+  email: String (required, unique, lowercase)
+  password?: String (select: false, for local auth only)
+  role: "user" | "admin"
+  provider: "local" | "google"
+  providerId?: String (for OAuth)
+  avatar?: { public_id, url, size }
+  isEmailVerified: Boolean
+  lastLoginAt?: Date
+  failedLoginAttempts: Number
+  lockUntil?: Date (account locked until)
+  isDeleted: Boolean
+  deletedAt?: Date
+  reActivateAvailableAt?: Date
+  createdAt: Date
+  updatedAt: Date
 }
 ```
 
-## Development Workflow
+### Refresh Token Model
 
-### Commit Convention
-
-Uses Conventional Commits (enforced by commitlint):
-
+```typescript
+{
+  _id: ObjectId
+  userId: ObjectId (references User)
+  tokenHash: String (hashed token for comparison)
+  expiresAt: Date
+  isRevoked: Boolean
+  revokedAt?: Date
+  replacedByTokenHash?: String (for rotation detection)
+  createdAt: Date
+}
 ```
-feat: add new feature
-fix: resolve bug
-docs: update documentation
-refactor: reorganize code
-test: add or update tests
-chore: dependencies, tooling
+
+### OTP Model
+
+```typescript
+{
+  _id: ObjectId
+  email: String
+  otpType: "SIGNIN" | "PASSWORD_RESET"
+  code: String (hashed)
+  expiresAt: Date
+  isUsed: Boolean
+  usedAt?: Date
+  createdAt: Date
+}
 ```
 
-### Pre-commit Checks
+## Environment Configuration
 
-Husky + lint-staged automatically run before commits:
+### Required Variables
 
-- ESLint auto-fix (`.ts` files)
-- Prettier auto-format (`.ts`, `.json`, `.md`, `.yml` files)
-- TypeScript type checking (`tsc --noEmit`)
+```bash
+# Server
+NODE_ENV=development|production
+PORT=3000
+CORS_ORIGIN=http://localhost:3000
+LOG_LEVEL=info|debug|warn|error
 
-### Code Quality Gate
+# Database
+DATABASE_URL=mongodb://localhost:27017/dbname
 
-All pull requests must pass:
+# Cache
+REDIS_URL=redis://localhost:6379
 
-- ESLint (no style violations)
-- Prettier (consistent formatting)
-- TypeScript strict mode (no type errors)
-- All tests (100% pass rate)
+# JWT
+JWT_ACCESS_SECRET=your-secret-key (min 32 chars)
+JWT_REFRESH_SECRET=your-secret-key (min 32 chars)
+JWT_ACCESS_EXPIRY=1h
+JWT_REFRESH_EXPIRY=7d
 
-## Key Features & Patterns
+# Email (Nodemailer)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=app-password
+EMAIL_FROM=noreply@example.com
 
-### Error Handling
+# File Upload (Cloudinary)
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 
-- **ApiError Class**: Custom error with factory methods for common HTTP errors
-  - `ApiError.badRequest()` → 400
-  - `ApiError.unauthorized()` → 401
-  - `ApiError.forbidden()` → 403
-  - `ApiError.notFound()` → 404
-  - `ApiError.conflict()` → 409
-  - `ApiError.server()` → 500
-- **Global Error Handler**: Catches all errors, formats response, logs appropriately
-- **Operational vs Programmer Errors**: `isOperational` flag distinguishes handled vs unexpected errors
+# OAuth (Google)
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/oauth/google/callback
+```
 
-### Response Normalization
+## Functional Requirements
 
-- **ApiResponse Class**: Consistent JSON response structure across all endpoints
-- Methods: `Success()`, `ok()`, `created()`
-- Includes: `success`, `message`, `statusCode`, `data`, `errors`
+| Requirement                   | Status   | Priority |
+| ----------------------------- | -------- | -------- |
+| User registration with email  | Complete | High     |
+| OTP-based login               | Complete | High     |
+| JWT token issuance & refresh  | Complete | High     |
+| Account lockout (brute-force) | Complete | High     |
+| Password hashing (argon2)     | Complete | High     |
+| Google OAuth2 integration     | Complete | High     |
+| Role-based access control     | Complete | High     |
+| User profile management       | Complete | Medium   |
+| Avatar upload to Cloudinary   | Complete | Medium   |
+| Email notifications           | Complete | Medium   |
+| Rate limiting                 | Complete | High     |
+| Request validation (Zod)      | Complete | High     |
+| Error handling                | Complete | High     |
+| API documentation (Swagger)   | Complete | Medium   |
+| Background job scheduling     | Complete | Medium   |
+| Graceful shutdown             | Complete | High     |
 
-### Async Route Handling
+## Non-Functional Requirements
 
-- **AsyncHandler**: HOF that wraps async route handlers and catches Promise rejections
-- Automatically forwards errors to Express error handler middleware
-- Eliminates need for try-catch in every route handler
-
-### Security
-
-- **Helmet**: Secures HTTP headers against common vulnerabilities
-- **CORS**: Restricted to configured origin, supports credentials
-- **Input Validation**: Zod schemas can be layered on request bodies
-- **Cookie Parser**: Secure cookie handling
-- **Morgan HTTP Logging**: All requests logged for audit trail
-
-### Structured Logging
-
-- **Pino Logger**: High-performance structured logging
-- **Dev Mode**: Colorized pretty-printed logs for readability
-- **Prod Mode**: JSON logs for log aggregation (ELK, Datadog, etc.)
-- **Single Logger Instance**: Exported from `src/shared/utils/logger.ts`
-
-### Database
-
-- **MongoDB Connection**: Managed in `src/db/db.ts`
-- **Mongoose Models**: TypeScript interfaces + schemas in feature modules
-- **Graceful Shutdown**: Closes MongoDB connection cleanly on process termination
-
-## PDR: Product Development Requirements
-
-### Phase 1: Foundation (Current - v1.0.0)
-
-**Status**: Complete (Released 2026-04-03)
-
-**Implementation**:
-
-- Express 5.x app with middleware stack
-- Security headers middleware (Helmet + CORS + custom headers) applied FIRST
-- MongoDB + Mongoose 9.x connection with graceful shutdown
-- Health check endpoints (basic + detailed with system info)
-- ApiError class with 11 factory methods
-- ApiResponse normalization
-- AsyncHandler for async route wrapping
-- Environment validation with Zod (fail-fast)
-- Pino structured logging (dev/prod modes)
-- Swagger/OpenAPI documentation
-- ESLint, Prettier, Husky, commitlint
-- TypeScript strict mode enabled
-
-**Modules Implemented**:
-
-- Health module (complete)
-- User model (schema with OAuth support)
-- Auth module (placeholder for v1.1.0)
-
-### Phase 2: Core Features (In Progress - v1.1.0)
-
-**Status**: OAuth + Email templates ✅ | Core auth ⏳
-
-**Completed Infrastructure** ✅:
-
-- [x] Redis client + cache helpers (setCache, getCache, deleteCache with TTL)
-- [x] Passport.js Google OAuth 2.0 strategy
-- [x] OAuth login flow (GET /oauth/google → callback → setAuthCookies)
-- [x] User find/create from OAuth profile
-- [x] EJS template rendering system for dynamic emails
-- [x] OTP email template (signin-otp.ejs) with variables
-- [x] Nodemailer email service (updated to use templates)
-- [x] OTP generation + Redis caching (5-10 min TTL)
-- [x] Graceful Redis disconnect on shutdown
-
-**Pending Functional Requirements**:
-
-- [ ] JWT access/refresh token generation & validation
-- [ ] User registration endpoint (`POST /auth/register`)
-- [ ] User login endpoint with password (`POST /auth/login`)
-- [ ] Password hashing (bcrypt) & verification
-- [ ] Refresh token mechanism
-- [ ] User roles & permissions (RBAC)
-- [ ] Email verification flow
-
-**Non-Functional Requirements**:
-
-- [ ] Comprehensive unit & integration tests (>80% coverage)
-- [ ] API documentation (Swagger auto-generated)
-- [ ] Rate limiting per endpoint
-- [ ] Request logging & audit trail
-
-**Module Status**:
-
-- auth module: controller + service with reusable `handleToken()` exported
-- oauth module: controller + service + routes (Google OAuth complete)
-- otp module: service with Redis caching + email templates
-- User model: supports both email/password and OAuth login
-
-### Phase 3: Advanced Features (Planned - v1.2.0)
-
-**Status**: Pending
-
-- Caching layer (Redis)
-- Email notifications (SendGrid/Nodemailer)
-- File upload handling (AWS S3)
-- Pagination & filtering standards
-- Soft delete support
-- Audit logging
-
-### Phase 4: Operations (Planned - v1.3.0)
-
-**Status**: Pending
-
-- Docker containerization
-- Kubernetes manifests
-- CI/CD pipeline (GitHub Actions)
-- Monitoring & alerting (Prometheus, Grafana)
-- Database migrations tooling
+| Requirement         | Implementation                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| **Performance**     | Redis caching, connection pooling, indexing on MongoDB                             |
+| **Scalability**     | Stateless design, Redis session store, horizontal scaling ready                    |
+| **Security**        | HTTPS-ready, CORS, rate limiting, helmet headers, password hashing, OTP validation |
+| **Reliability**     | Error handling, graceful shutdown, transaction support, retry logic                |
+| **Maintainability** | TypeScript strict mode, modular structure, comprehensive logging, code standards   |
+| **Monitoring**      | Pino logging, system monitor job, health check endpoint                            |
+| **Testing**         | Structured for unit/integration tests (framework ready, no tests yet)              |
 
 ## Success Metrics
 
-| Metric                     | Target | Current      |
-| -------------------------- | ------ | ------------ |
-| Test Coverage              | >80%   | 0% (pending) |
-| TypeScript strict mode     | 100%   | 100%         |
-| ESLint passing             | 100%   | 100%         |
-| API endpoint response time | <100ms | Varies       |
-| Server startup time        | <5s    | ~1-2s        |
-| Graceful shutdown time     | <10s   | ~3-5s        |
+1. **Code Quality:** ESLint/Prettier pass on all commits
+2. **Type Safety:** TypeScript strict mode enabled, no implicit any
+3. **Security:** All endpoints protected where needed, rate limiting enforced
+4. **API Usability:** Swagger docs auto-generated, clear error messages
+5. **Developer Experience:** Onboarding time < 30 minutes, CLI commands intuitive
+6. **Uptime:** Graceful shutdown, zero data loss on restart
 
-## Related Documentation
+## Architecture Highlights
 
-- [Code Standards](./code-standards.md) — Naming conventions, file structure, patterns
-- [System Architecture](./system-architecture.md) — Request lifecycle, middleware stack, error flow
-- [Codebase Summary](./codebase-summary.md) — File tree, LOC estimates, module exports
-- [Project Roadmap](./project-roadmap.md) — Milestones, feature backlog, timeline
+- **Modular design:** Feature-based modules (auth, user, oauth, upload)
+- **Separation of concerns:** Controllers → Services → Models
+- **Middleware chain:** Security headers → Rate limiting → Body parsing → Routes → Error handler
+- **Type safety:** Zod validation + TypeScript
+- **Async/await patterns:** Modern async handling with try-catch
+- **Error standardization:** ApiError class with static factory methods
+- **Configuration management:** Environment-driven, validation at startup
+
+## Version History
+
+| Version | Date       | Status   | Notes                                           |
+| ------- | ---------- | -------- | ----------------------------------------------- |
+| 1.0.0   | 2025-04-26 | Complete | Phase 2 - Google OAuth, Redis, Email templating |
+| 0.2.0   | 2025-04-03 | Complete | Phase 1.5 - User module, global types           |
+| 0.1.0   | 2025-03-xx | Complete | Phase 1 - Core auth, middleware, utilities      |
+
+## Next Steps (Roadmap)
+
+1. **Automated Tests:** Unit tests for services, integration tests for routes
+2. **More OAuth Providers:** GitHub, LinkedIn, Microsoft OAuth2
+3. **Admin Panel:** User management, role assignment, analytics
+4. **Enhanced User CRUD:** Batch operations, advanced filtering
+5. **API Versioning:** Support multiple API versions for backward compatibility
+6. **GraphQL Alternative:** Parallel GraphQL endpoint
+7. **Docker & Kubernetes:** Containerization, k8s deployment configs
+8. **Rate Limit Persistence:** Move rate limit data to Redis
+9. **Audit Logging:** Track all user actions and admin operations
+10. **2FA:** TOTP (Google Authenticator) as second factor
